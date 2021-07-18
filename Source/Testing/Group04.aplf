@@ -1,0 +1,32 @@
+ Group04;io;dir;i;tf;⎕RL;testsize;unused
+ io←#.FilePlus.IO ⋄ dir←#.FilePlus.Dir ⍝ Easier references to tested functions
+ #.FilePlus.TreeSize←10 ⍝ Artificially limit the size of trees we'll be working with
+ ⎕FUNTIE ⎕FNUMS ⋄ 1 ⎕NDELETE tf←TestFile ⋄ (#.FilePlus.Create Pass 1)tf ⍝ Create a fresh file to test with
+
+ ⍝ Use a vector long enough (with our temporary tree size) to use triple-level B-Tree indexing
+ ⎕RL←+/⎕TS ⋄ testsize←500
+ :For i :In testsize?testsize ⍝ Create the array in random order
+     ('Long[]'i)(io Pass_{1})1('Long[',(⍕i),']')
+ :EndFor
+
+ ⍝ And verify that it's structurally correct
+ '⌹'(dir Pass ⍬)1
+
+ ⍝ Now delete all the items one at a time
+ :For i :In testsize?testsize ⍝ Delete them in a different random order
+     '↓'(dir Pass_{1})1('Long[',(⍕i),']')
+     :If 0=50|i ⍝ Occasionally verify that structure is still good
+         '⌹'(dir Pass ⍬)1
+     :EndIf
+ :EndFor
+
+ '∊'(dir Pass 0)1 'Long[]' ⍝ Is it completely gone?
+ '⍬'(dir Pass{(≢⍵)∊565+⍳25})1 ⍝ Do we have a lot of recovered components?
+ unused←'⍬'dir 1
+ '↓' (dir Fail 'Unable to delete unused component number') 1,unused[?≢unused] ⍝ Try to drop an already-dropped raw number
+
+ ⍝ And verify that it's still structurally correct
+ '⌹'(dir Pass ⍬)1
+
+ #.FilePlus.TreeSize←100 ⍝ Put it back the way it's supposed to be
+ ⎕FUNTIE 1 ⋄ 0(⎕NDELETE Pass 1)tf ⍝ If that's enough for now, let's shut down and get rid of the evidence

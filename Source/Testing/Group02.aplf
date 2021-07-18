@@ -1,0 +1,75 @@
+ Group02;io;dir;i;tf;⎕RL;testsize;j;ii;jj;ij;ae;unused;used
+ io←#.FilePlus.IO ⋄ dir←#.FilePlus.Dir ⍝ Easier references to tested functions
+ #.FilePlus.TreeSize←10 ⍝ Artificially limit the size of trees we'll be working with
+ ⎕FUNTIE ⎕FNUMS ⋄ 1 ⎕NDELETE tf←TestFile ⋄ (#.FilePlus.Create Pass 1)tf ⍝ Create a fresh file to test with
+
+ ⍝ Create a vector long enough (with our temporary tree size) to use triple-level B-Tree indexing
+ ⎕RL←+/⎕TS ⋄ testsize←500
+ :For i :In testsize?testsize
+     ('Long[]'i)(io Pass_{1})1('Long[',(⍕i),']')
+ :EndFor
+ ⍝ Spot-check some random subscripts
+ :For i :In (⌊testsize÷5)?testsize
+     (io Pass('Long[]'i))1('Long[',(⍕i),']')
+ :EndFor
+ ⍝ Step through the subscripts sequentially to make sure we see them all and all in the right order
+ ⍝ (Linear B-tree traversal check)
+ :For i :In ⍳testsize
+     '[>]'(dir Pass i)1('Long[',(⍕0~⍨i-1),']') ⍝ Including the beginning of the list
+ :EndFor
+ '[>]'(dir Pass ⍬)1('Long[',(⍕testsize),']') ⍝ And off the end, as well
+
+⍝ Let's create a 2-D array with text subscripts (AAA→EEE)
+ :For i :In 5?5
+     :For j :In 5?5
+         ii←3⍴⎕A[i] ⋄ jj←3⍴⎕A[j]
+         (ii,'/',jj)(io Pass_{1})1('Two[',ii,';',jj,']')
+     :EndFor
+ :EndFor
+ ⍝ And read it all back out in a different order
+ :For i :In 5?5
+     :For j :In 5?5
+         ii←3⍴⎕A[i] ⋄ jj←3⍴⎕A[j]
+         (io Pass(ii,'/',jj))1('Two[',ii,';',jj,']')
+     :EndFor
+ :EndFor
+ ⍝ Let's walk the entire tree in order to make sure they're sequenced properly
+ ⍝ While we're in here, let's also check adjacent non-existent inputs
+ ij←(⊂2⍴⊂''),(ae←,∘.,⍨⊂¨3⍴¨5↑⎕A),⊂⍬
+ :For i :In ⍳1-⍨≢ij
+     '[>]'(dir Pass((i+1)⊃ij))1('Two[',(i 1⊃ij),';',(i 2⊃ij),']') ⍝ Check each succeeding subscript to make sure it follows in order
+     '[>]'(dir Pass((i+1)⊃ij))1('Two[',(i 1⊃ij),';',(i 2⊃ij),'z]') ⍝ Look to see that a following non-existent key also goes forward
+     :If i>1
+         '[>]'(dir Pass(i⊃ij))1('Two[',(i 1⊃ij),';',(¯1↓i 2⊃ij),']') ⍝ Look to see that a preceeding non-existent key gets back to me
+     :EndIf
+ :EndFor
+ ⍝ Let's try walking backwards, too
+ ij[1,≢ij]←⌽ij[1,≢ij]
+ :For i :In ⌽1↓⍳≢ij
+     '[<]'(dir Pass((i-1)⊃ij))1('Two[',(i 1⊃ij),';',(i 2⊃ij),']') ⍝ Check each preceeding subscript to make sure it leads in order
+     :If i<≢ij
+         '[<]'(dir Pass(i⊃ij))1('Two[',(i 1⊃ij),';',(i 2⊃ij),'z]') ⍝ Look to see that a following non-existent key ends up back where we were
+         '[<]'(dir Pass((i-1)⊃ij))1('Two[',(i 1⊃ij),';',(¯1↓i 2⊃ij),']') ⍝ Look to see that a preceeding non-existent key goes back to the preceeding one as well
+     :EndIf
+ :EndFor
+
+ ⍝ Let's check some matrix directory lookups
+ '[?]'(dir Pass(↑ae))1 'Two[;]'
+ '[?]'(dir Pass(↑5↑ae))1 'Two[A;]'
+ '[?]'(dir Pass(↑ae[5×⍳5]))1 'Two[;E]'
+ '[+]'(dir Pass(↑5↑ae))1 'Two[A;]'
+ '[+]'(dir Pass(↑ae[5×⍳5]))1 'Two[;E]'
+ '[+]'(dir Pass(↑ae[,2]))1 'Two[A;B]'
+ '[⍳]'(dir Pass{25=≢⍵})1 'Two[;]'
+ '[⍳]'(dir Pass{5=≢⍵})1 'Two[AA;]'
+
+ ⍝ Try to delete something that's still in use
+ '↓'(dir Fail'Unable to delete named component array item by number')1,'⍳' dir 1 ('Long[',(⍕?testsize),']')
+ unused←'⍬' dir 1 ⋄ used←(1↓⍳¯1+2⊃⎕FSIZE 1)~unused ⍝ Try a random selection of something used
+ '↓'(dir Fail{'Unable to delete'≡16↑⍵})1,used[?≢used]
+
+ ⍝ And verify that it's still structurally correct
+ '⌹'(dir Pass ⍬)1
+
+ #.FilePlus.TreeSize←100 ⍝ Put it back the way it's supposed to be
+ ⎕FUNTIE 1 ⋄ 0(⎕NDELETE Pass 1)tf ⍝ If that's enough for now, let's shut down and get rid of the evidence

@@ -1,0 +1,26 @@
+ Group07;io;dir;i;tf;testsize;unused
+ io←#.FilePlus.IO ⋄ dir←#.FilePlus.Dir ⍝ Easier references to tested functions
+ #.FilePlus.TreeSize←10 ⍝ Artificially limit the size of trees we'll be working with
+ ⎕FUNTIE ⎕FNUMS ⋄ 1 ⎕NDELETE tf←TestFile ⋄ (#.FilePlus.Create Pass 1)tf ⍝ Create a fresh file to test with
+
+ ⍝ Use a vector long enough (with our temporary tree size) to use triple-level B-Tree indexing
+ testsize←500
+ :For i :In ⍳testsize ⍝ Create the array in sequential order (for testing consistency)
+     ('Long[]'i)(io Pass_{1})1('Long[',(⍕i),']')
+ :EndFor
+
+ ⍝ And verify that it's structurally correct
+ '⌹'(dir Pass ⍬)1
+
+ ⍝ Now delete the entire array at once
+ '↓'(dir Pass_{1})1 'Long[]'
+
+⍝ Make sure it cleaned up properly
+ '∊'(dir Pass 0)1 'Long[]' ⍝ Is it completely gone?
+ '⍬'(dir Pass(1 23~⍨⍳¯1+2⊃⎕FSIZE 1))1 ⍝ Is the entire file now recovered?
+
+ ⍝ And verify that it's still structurally correct
+ '⌹'(dir Pass ⍬)1
+
+ #.FilePlus.TreeSize←100 ⍝ Put it back the way it's supposed to be
+ ⎕FUNTIE 1 ⋄ 0(⎕NDELETE Pass 1)tf ⍝ If that's enough for now, let's shut down and get rid of the evidence

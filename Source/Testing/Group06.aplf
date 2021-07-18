@@ -1,0 +1,23 @@
+ Group06;create;tie;tf;ff
+ ⍝ Test creating/tying files in ⎕WSID's directory instead of a full path
+ create←#.FilePlus.Create ⋄ tie←#.FilePlus.Tie ⍝ Easier references to tested functions
+ ⎕FUNTIE ⎕FNUMS ⋄ tf←TestFile2 ⍝ Here's what we'll work with (implied directory)
+
+ (create Pass 1)tf ⍝ Can we create it with an implied directory
+ ({⎕FNUMS}Pass(,1))⍬ ⍝ Is it tied to 1?
+ ff←⎕FNAMES[1;] ⍝ Get the full file name for reference
+ ({≡/⊃¨1 ⎕NPARTS ⎕WSID ⍵}Pass 1)ff ⍝ Is it in the correct (⎕WSID) directory?
+ (⎕FUNTIE Pass(,1))1 ⍝ Untie it
+
+ (tie Pass 1)tf ⍝ Try to retie the file in its relative directory
+ ({,⎕FNAMES}Pass ff)⍬ ⍝ Check to make sure it's the same file name
+
+ (tie Pass ¯1)tf ⍝ Try to tie the file while it's still tied
+ ({⎕FNUMS}Pass(,1))⍬ ⍝ Make sure it's the only one tied
+ ({,⎕FNAMES}Pass ff)⍬ ⍝ Check to make sure it's the same file name
+
+ (⎕FUNTIE Pass(,1))1 ⍝ Untie it again
+ 1 1 1(tie Pass 1)tf ⍝ Let's tie it again with requirements
+⍝ That looks fine, then
+
+ ⎕FUNTIE 1 ⋄ 0(⎕NDELETE Pass 1)ff ⍝ Shut down and get rid of the evidence

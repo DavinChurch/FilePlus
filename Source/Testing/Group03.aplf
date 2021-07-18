@@ -1,0 +1,33 @@
+ Group03;io;dir;tf;⎕RL
+ io←#.FilePlus.IO ⋄ dir←#.FilePlus.Dir ⍝ Easier references to tested functions
+ ⎕FUNTIE ⎕FNUMS ⋄ 1 ⎕NDELETE tf←TestFile ⋄ 10(#.FilePlus.Create Pass 1)tf ⍝ Create a fresh file to test with (with reserved comp #)
+
+⍝ Give us some data to play with
+ 'manual'(io Pass 3)1 0 ⍝ Append an unnamed component
+ 'extra'(io Pass 4)1 0 ⍝ Append an extra unnamed component (for later dropping)
+
+ 'davin'(io Pass_{1})1 'Davin' ⍝ Create a named (scalar) component
+ 'church'(io Pass_{1})1 'Church' ⍝ Create a second named (scalar) component
+ 'John'(io Pass_{1})1 'Names[1]' ⍝ Create a (vector) subscripted component
+ 'Jane'(io Pass_{1})1 'Names[2]' ⍝ Append a subscript to it
+ 'Jack'(io Pass_{1})1 'Names[Husband]' ⍝ Add non-numeric subscript to existing vector
+ 'Jill'(io Pass_{1})1 'Names[Wife]' ⍝ Add non-numeric subscript to existing vector
+
+ ⍝ Now for some more-advanced directory work
+ '≠'(dir Pass(,10))1 ⍝ Reserved components
+ '⍬'(dir Pass ⍬)1 ⍝ Free space list before deletions
+ '↓'(dir Pass_{1})1 4 ⍝ Release manual component #
+ '⍬'(dir Pass(,4))1 ⍝ Free space list after simple deletion
+ '↓'(dir Pass_{1})1 'Church' ⍝ Delete a scalar named component
+ '⍬'(dir Pass 4 6)1 ⍝ Free space list after scalar deletion
+ '↓'(dir Pass_{1})1 'Names[Husband]' ⍝ Delete a vector-item named component
+ '⍬'(dir Pass 4 6 11)1 ⍝ Free space list after item deletion
+ '↓'(dir Pass_{1})1 'Names[]' ⍝ Delete a whole vector component
+ '⍬'(dir Pass 4 6 7 8 9 11 12)1 ⍝ Free space list after array deletion
+ '∊'(dir Pass 0)1 'Names[]' ⍝ Is it gone?
+
+ ⍝ And verify that it's still structurally correct
+ '⌹'(dir Pass (,3))1
+
+ ⍝ If that's enough for now, let's shut down and get rid of the evidence
+ ⎕FUNTIE 1 ⋄ 0(⎕NDELETE Pass 1)tf

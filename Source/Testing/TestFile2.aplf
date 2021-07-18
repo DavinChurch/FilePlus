@@ -1,0 +1,3 @@
+ file←TestFile2
+⍝ A ⎕WSID-relative file name to be used for testing
+ file←'FilePlus.dpf' ⍝ (DPF = Dyalog Plus File)

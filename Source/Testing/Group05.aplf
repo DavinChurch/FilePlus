@@ -1,0 +1,29 @@
+ Group05;io;dir;tf;testsize;⎕IO;i
+ io←#.FilePlus.IO ⋄ dir←#.FilePlus.Dir ⍝ Easier references to tested functions
+ ⎕FUNTIE ⎕FNUMS ⋄ 1 ⎕NDELETE tf←TestFile ⋄ (#.FilePlus.Create Pass 1)tf ⍝ Create a fresh file to test with
+
+⍝ Try reading and writing vectors with different ⎕IOs
+
+ ⎕IO←1 ⋄ testsize←10
+ ⍝ Write components [1]→[10]
+ :For i :In ⍳testsize
+     i(io Pass_{1})1('Test[',(⍕i),']')
+ :EndFor
+ ⍝ Read them back as written
+ :For i :In ⍳testsize
+     (io Pass i)1('Test[',(⍕i),']')
+ :EndFor
+ ⎕IO←0 ⍝ Change the view of the numeric subscript world
+ ⍝ Read them back as [0]→[9]
+ :For i :In ⍳testsize
+     (io Pass (i+1))1('Test[',(⍕i),']')
+ :EndFor
+
+⍝ Do the directories agree?
+ '[?]' (dir Pass (⍳testsize)) 1 'Test[]'
+ '[>]' (dir Pass 4) 1 'Test[3]'
+ '[+]' (dir Pass (,5)) 1 'Test[5]'
+ '[?]' (dir Pass (,9)) 1 'Test[9]'
+ '[>]' (dir Pass ⍬) 1 'Test[9]'
+
+ ⎕FUNTIE 1 ⋄ 0(⎕NDELETE Pass 1)tf ⍝ If that's enough for now, let's shut down and get rid of the evidence

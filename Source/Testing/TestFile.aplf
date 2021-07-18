@@ -1,0 +1,4 @@
+ file←TestFile;dir
+⍝ File name to be used for testing
+ dir←739⌶0 ⋄ dir←dir,⊃'/\'∩dir ⍝ The system temporary directory
+ file←dir,'FilePlus.dpf' ⍝ (DPF = Dyalog Plus File)

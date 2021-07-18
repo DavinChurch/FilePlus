@@ -1,0 +1,66 @@
+ Group01;io;dir;tf;⎕RL;tie
+ io←#.FilePlus.IO ⋄ dir←#.FilePlus.Dir ⋄ tie←#.FilePlus.Tie ⍝ Easier references to tested functions
+ ⎕FUNTIE ⎕FNUMS ⋄ 1 ⎕NDELETE tf←TestFile ⋄ (#.FilePlus.Create Pass 1)tf ⍝ Create a fresh file to test with
+
+⍝ Test some reading and writing first
+
+ 'manual'(io Pass 2)1 0 ⍝ Append an unnamed component
+⍝ Take a break to untie and retie file
+ (tie Pass_{~1∊⎕FNUMS})1 ⍝ Verify untying
+ 1 0 0(tie Pass 1)tf ⍝ Retying to same number
+ (tie Pass ¯1)tf ⍝ Tying a tied file returns a negative number
+⍝ Resume testing
+ 'davin'(io Pass_{1})1 'Davin' ⍝ Create a named (scalar) component
+ 'church'(io Pass_{1})1 'Church' ⍝ Create a second named (scalar) component
+ (io Pass'davin')1 'Davin' ⍝ Verify first named component
+ (io Pass'church')1 'Church' ⍝ Verify second named component
+ (io Fail'Component Value Error')1 'Nobody' ⍝ Check for no-such-name failure
+
+ 'John'(io Pass_{1})1 'Names[1]' ⍝ Create a (vector) subscripted component
+ 'Jane'(io Pass_{1})1 'Names[2]' ⍝ Append a subscript to it
+ 'Joe'(io Pass_{1})1 'Names[17]' ⍝ Append a non-consecutive subscript
+ (io Pass'John')1 'Names[1]' ⍝ Read back for confirmation
+ (io Pass'Jane')1 'Names[2]' ⍝ Read back for confirmation
+ (io Pass'Joe')1 'Names[17]' ⍝ Read back for confirmation
+ (io Fail'Component Value Error')1 'Names[99]' ⍝ Confirm no-such-subscript failure
+
+ 'Jack'(io Pass_{1})1 'Names[Husband]' ⍝ Add non-numeric subscript to existing vector
+ 'Jill'(io Pass_{1})1 'Names[Wife]' ⍝ Add non-numeric subscript to existing vector
+ (io Pass'Jack')1 'Names[Husband]' ⍝ Read back for confirmation
+ (io Pass'Jill')1 'Names[Wife]' ⍝ Read back for confirmation
+
+ ⍝ Now for some directory work
+
+ '∊'(dir Pass 1)1 'Davin'
+ '∊'(dir Pass 0)1 'Jack'
+ '⍳'(dir Pass 3)1 'Davin'
+ '⍳'(dir Pass 0)1 'Jack'
+ '?'(dir Pass'Church' 'Davin' 'Names[]')1
+ '?'(dir Pass(,⊂'Davin'))1 'D'
+ '[?]'(dir Pass 1 2 17 'Husband' 'Wife')1 'Names[]'
+ '[⍳]'(dir Pass 6 7 8 9 10)1 'Names[]'
+ '[>]'(dir Pass 1)1 'Names[]'
+ '[>]'(dir Pass 17)1 'Names[2]'
+ '[>]'(dir Pass'Husband')1 'Names[17]'
+ '[>]'(dir Pass'Wife')1 'Names[Husband]'
+ '[>]'(dir Pass ⍬)1 'Names[Wife]'
+ '[<]'(dir Pass 'Wife')1 'Names[]'
+ '[<]'(dir Pass 1)1 'Names[2]'
+ '[<]'(dir Pass'Husband')1 'Names[Wife]'
+ '[<]'(dir Pass 17)1 'Names[Husband]'
+ '[<]'(dir Pass ⍬)1 'Names[1]'
+ '[+]'(dir Pass(,⊂'Husband'))1 'Names[H]'
+ '[-]'(dir Fail 'Invalid array-subscripting function')1 'Names[]'
+ '∊'(dir Pass 1)1 'Names[]'
+ '∊'(dir Pass 1)1 'Names[1]'
+ '∊'(dir Pass 0)1 'Names[999]'
+ '⍳'(dir Pass 6)1 'Names[1]'
+ '⍳'(dir Pass 0)1 'Names[999]'
+ '≠'(dir Pass ⍬)1
+ '⍬'(dir Pass ⍬)1
+ '⌹'(dir Pass(,2))1 ⍝ Does the file still validate?
+ '∘' (dir Fail 'Unknown function request')1 'xyz'
+ '↓' (dir Fail 'Unable to delete named component by number') 1,'⍳' dir 1 'Davin'
+
+ ⍝ If that's enough for now, let's shut down and get rid of the evidence
+ ⎕FUNTIE 1 ⋄ 0(⎕NDELETE Pass 1)tf
