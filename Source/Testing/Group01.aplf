@@ -29,6 +29,10 @@
  (io Pass'Jack')1 'Names[Husband]' ⍝ Read back for confirmation
  (io Pass'Jill')1 'Names[Wife]' ⍝ Read back for confirmation
 
+ 'Nope'(io Fail 'The subscript "⎕" is reserved for future use')1 'Names[⎕]' ⍝ Does a reserved-for-future-use subscript fail?
+ 'Nope'(io Fail 'Subscripts beginning with "⍎" are reserved for future use')1 'Names[⍎⍳3]' ⍝ Does a reserved-for-future-use subscript fail?
+
+
  ⍝ Now for some directory work
 
  '∊'(dir Pass 1)1 'Davin'

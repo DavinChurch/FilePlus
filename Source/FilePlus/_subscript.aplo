@@ -8,6 +8,9 @@
 ⍝
 ⍝ No checking is done of any required subscripts, only the values present or not present are returned.
 ⍝
+⍝ In the future, some special kinds subscripts will be processed here. Until that time, those special
+⍝ cases will be reserved. This code will enforce those reservations until it is time to process them.
+⍝
 ⍝ Result:
 ⍝       If the argument is not a subscripted name, then it is returned just the same as it was given,
 ⍝           but enclosed as the first and only item of the nested vector result.
@@ -29,5 +32,7 @@
      :AndIf ∨/t\9≥≢¨t/subs ⍝ Allow up to 9-digit integer numerics
          (t/subs)←(io=0)+(⊃2⊃⎕VFI)¨t/subs ⍝ Decode all-numeric subscripts
      :EndIf
+     'The subscript "⎕" is reserved for future use'⎕SIGNAL 16/⍨(⊂,'⎕')∊subs
+     'Subscripts beginning with "⍎" are reserved for future use'⎕SIGNAL 16/⍨'⍎'∊⊃¨subs
      subs←(⊂term,(×≢term)/'[',(';'⍴⍨1-⍨⍴subs),']'),subs ⍝ Return final result
  :EndIf
