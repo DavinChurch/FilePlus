@@ -41,6 +41,10 @@ and overview of the package.  It then goes on to describe the flexible types of 
 
 This directory is intended to be imported and used as a complete namespace and contains all the code needed to use this package.  Locally-assigned references to any of the functions may be placed in the application namespace for easier use, if desired.
 
+## The Source/FilePlus/API Directory
+
+This directory contains only references to the actual FilePlus code.  It is here only to provide a limited API interface point for use by the Tatin package manager. This namespace is not needed at all if the code is being imported without using Tatin.
+
 ## The Source/Testing Directory
 
 This directory is its own namespace which contains facilities for testing all the FilePlus functionality, which is expected to be found in the #.FilePlus namespace.  This code is provided only for testing the main toolkit and is not needed for any application use.

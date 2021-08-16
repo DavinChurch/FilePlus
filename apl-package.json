@@ -1,0 +1,1 @@
+{  api: "API",  assets: "",  description: "Extend component files to use named components",  group: "Davin",  info_url: "https://github.com/DavinChurch/FilePlus",  io: 1,  lx: "",  ml: 1,  name: "FilePlus",  source: "Source/FilePlus",  tags: "files,names,components,named-components,extension,dynamic,windows,mac-os,linux",  version: "0.1.0-test+1",  wx: 3,}
