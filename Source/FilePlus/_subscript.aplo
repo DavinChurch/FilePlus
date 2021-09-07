@@ -33,6 +33,7 @@
          (t/subs)←(io=0)+(⊃2⊃⎕VFI)¨t/subs ⍝ Decode all-numeric subscripts
      :EndIf
      'The subscript "⎕" is reserved for future use'⎕SIGNAL 16/⍨(⊂,'⎕')∊subs
+     'The subscript "," is reserved for future use'⎕SIGNAL 16/⍨(⊂,',')∊subs
      'Subscripts beginning with "⍎" are reserved for future use'⎕SIGNAL 16/⍨'⍎'∊⊃¨subs
      subs←(⊂term,(×≢term)/'[',(';'⍴⍨1-⍨⍴subs),']'),subs ⍝ Return final result
  :EndIf
