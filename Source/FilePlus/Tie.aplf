@@ -40,7 +40,8 @@
      :If relative file ⋄ file←(⊃1 ⎕NPARTS ⎕WSID),file ⋄ :EndIf ⍝ It's not a full path, so make file name relative to WS directory
      file←⊃,/1 ⎕NPARTS file ⍝ Convert to a full name
      :If 0=⎕NC'exclusive' ⋄ exclusive←⍬ ⋄ :EndIf
-     exclusive←3↑exclusive ⋄ exclusive[1]←0⌈⌊exclusive[1] ⋄ exclusive[2 3]←~~exclusive[2 3]
+     exclusive←3↑exclusive ⋄ exclusive[1]←0⌈⌊exclusive[1]
+     'Argument flags must be boolean'⎕SIGNAL 11/⍨~∧/exclusive[2 3]∊0 1
      ⍝ See if it's already tied (any capitalization if Windows)
      :If ∨/t←(UC¨⊃¨,/¨1 ⎕NPARTS ∆dlt¨↓⎕FNAMES)∊⊂UC file
          ⍝ The named file is already tied - return its tie number, but negatively

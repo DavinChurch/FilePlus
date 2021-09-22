@@ -1,4 +1,4 @@
- path←{route}(tn _find root)key;bmax;read;ptrs;keys;at;free;lptr;hptr;limb1;limb2;pptrs;pkeys;t;pk;st
+ path←{route}(tn _find root)key;bmax;read;ptrs;keys;at;free;lptr;hptr;limb1;limb2;pptrs;pkeys;t;pk;st;⎕CT
 ⍝ Locate a key in the B-tree starting at the given root.
 ⍝ If full nodes are encountered along the way, pre-split them to leave enough room for insertions.
 ⍝ Right operand:
@@ -14,6 +14,7 @@
 ⍝          (2⊃¨1↓path)←Key-subscript into that node that is ≥ the requested key
 
  bmax←4⌈⌊|⊃∊TreeSize ⍝ Adjustable B-tree size
+ ⎕CT←0 ⍝ ≡ needs to perform exact comparisons like ⍋/⍸
  read←root<0 ⋄ :If 0=⎕NC'route' ⋄ route←⍬ ⋄ :EndIf ⍝ Route is used internally for recursive calls
  (ptrs keys)←⎕FREAD tn,root←|root ⍝ Obtain the B-tree root node to search
 

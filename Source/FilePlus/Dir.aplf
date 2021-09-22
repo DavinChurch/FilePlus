@@ -195,7 +195,7 @@
          :ElseIf ×≢t←(×1 _keyrank¨2⊃mlist)/2⊃mlist ⍝ Are any of these names subscripted arrays?
              :For t :In t ⍝ Loop through all subscripted array names ⍝ This can take a while if they're big
                  :Trap 0
-                     used←'∞' '∞'(tn _validate(((2⊃mlist)⍳⊂t)⊃1⊃mlist))1 _keyrank t
+                     used←'∞' '∞'(tn _validate(((2⊃mlist){⎕CT←0 ⋄ ⍺⍳⍵}⊂t)⊃1⊃mlist))1 _keyrank t
                  :Else
                      ⎕FUNTIE untie ⋄ 'Unable to delete component number from damaged file'⎕SIGNAL 23
                  :EndTrap
