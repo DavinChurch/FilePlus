@@ -3,7 +3,7 @@ This document describes a Dyalog namespace that contains a set of component file
 
 These functions implement a simple and high-performance method of using named components in Dyalog component files.  They are designed as extensions to the standard file system and may be used in conjunction with the native `⎕F…` system functions.  Both numbered and named components can coexist in the same file and operations may be performed interchangeably.
 
-Of course, most APL programmers have written similar tools over the years, sometimes several different sets of such tools.  But many of them have often had significant restrictions, inflexibility, bugs, or efficiency concerns to deal with.  This set of tools does not have any significant drawbacks of this sort and are well-suited for general use for all but the most extreme application needs.  These functions are being distributed in the hopes that they may satisfy any and all future named-component file needs, without any need to “reinvent the wheel” when such facilities are desired.
+Of course, most APL programmers have written similar tools over the years, sometimes several different sets of such tools.  But many of them have often had significant restrictions, inflexibility, bugs, or efficiency concerns to deal with.  This set of tools does not have any significant drawbacks of this sort and is well-suited for general use for all but the most extreme application needs.  These functions are being distributed in the hopes that they may satisfy any and all future named-component file needs, without any need to “reinvent the wheel” when such facilities are desired.
 
 The mere fact that many programmers have created such tools time after time for many different purposes points to their general usefulness.  The reason they are not more widely used likely has a lot to do with the bother in producing a useful and efficient system while in the midst of writing an application.  With tools like these readily available they often make application coding easier in several respects, even when it isn’t otherwise important enough to build a custom system for those needs.
 
@@ -25,25 +25,24 @@ Component arrays may be of any rank and any size and even extremely large compon
 
 # Repository Organization
 
-This is a member of the APLTree project at https://github.com/aplteam/apltree.
+This is a member of the [APLTree project](https://github.com/aplteam/apltree) and is also available via the [Tatin package manager](https://github.com/aplteam/Tatin).
 
 ## The Distribution Directory
 
-This directory contains a workspace copy of the code for those that desire that form.  However, it is expected that most distribution will be done with the individual source code text files in the Source directory.
+This directory contains a workspace copy of the code for those that desire that form.  However, it is expected that most distribution will be done with the individual source code text files in the Source directory. A namespace script is also available here for those that prefer that distribution mechanism.
 
 ## The Documentation Directory
 
-This directory contains a PDF file with extensive documentation on the toolkit and its components.  It begins with an introduction
-and overview of the package.  It then goes on to describe the flexible types of component naming that are supported and some suggestions on how these tools might be used.  Finally it gives a quick reference on the use of the tools followed by detailed descriptions of all the public functions.
+This directory contains a PDF file with extensive documentation on the toolkit and its components.  It begins with an introduction and overview of the package.  It then goes on to describe the flexible types of component naming that are supported and some suggestions on how these tools might be used.  Finally it gives a quick reference on the use of the tools followed by detailed descriptions of all the public functions.
 
 
 ## The Source/FilePlus Directory
 
-This directory is intended to be imported and used as a complete namespace and contains all the code needed to use this package.  Locally-assigned references to any of the functions may be placed in the application namespace for easier use, if desired.
+This directory is intended to be imported and used as a complete namespace and contains all the code needed to use this package. Locally-assigned references to any of the functions may be placed in the application namespace for easier use, if desired. Other functions/operators in this namespace besides the four mentioned above are for internal use only rather than public use.
 
 ## The Source/FilePlus/API Directory
 
-This directory contains only references to the actual FilePlus code.  It is here only to provide a limited API interface point for use by the Tatin package manager. This namespace is not needed at all if the code is being imported without using Tatin.
+This directory contains only references to the actual FilePlus code that is available for public use.  It is here only to provide a limited API interface point for use by the [Tatin package manager](https://github.com/aplteam/Tatin). This namespace is not needed at all if the code is being imported without using Tatin.
 
 ## The Source/Testing Directory
 
@@ -51,4 +50,4 @@ This directory is its own namespace which contains facilities for testing all th
 
 The testing functions herein are provided as related groups of tests to be performed and named Group01, Group02, etc.  Simply execute any of these functions here to test that group.  If all the groups are to be tested, the `Test` function may be invoked with a list of function names (in almost any reasonable structure and format) as a right argument.  These names may include an `*` wild-card character, so `Test '*'` will execute all the functions in the workspace.
 
-For more details on using `Test` and the testing engine, see the `Tester` package in the companion repository.
+For more details on using `Test` and the testing engine, see the [Tester package](https://github.com/DavinChurch/Tester) in the companion repository.
