@@ -19,7 +19,7 @@
  (ptrs keys)←⎕FREAD tn,root←|root ⍝ Obtain the B-tree root node to search
 
  :If (~read)∧bmax≤≢keys ⍝ Pre-split this large (full) node before proceeding
-     at←⌈(1+≢keys)÷2 ⋄ free←⍬ ⍝ Determine split point (the key value to move up into parent)
+     at←⌈2÷⍨1+≢keys ⋄ free←⍬ ⍝ Determine split point (the key value to move up into parent)
      ⍝ It would be possible to split new keys unevenly but that has advantages only if the keys are
      ⍝ mostly created in order, and that isn't necessarily how it would usually be done.
      :If =/≢¨ptrs keys ⍝ This is a leaf node being split (to leave room for inserting)

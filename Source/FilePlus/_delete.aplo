@@ -3,7 +3,7 @@
 ⍝ {path} is defined as the result of _find, where path[1]≠0
 
  'Unable to delete missing component'⎕SIGNAL 11/⍨0=free←⊃path
- root at←⊃path←1↓path ⍝ Where will we start searching?
+ (root at)←⊃path←1↓path ⍝ Where will we start searching?
  bmax←4⌈⌊|⊃∊TreeSize ⋄ bmin←¯1+⌈bmax÷2 ⍝ Adjustable B-tree size
  :If =/≢¨(ptrs keys)←⎕FREAD tn,root ⍝ This is a leaf node - just remove this item by itself
      (ptrs keys)/⍨←⊂at≠⍳≢ptrs ⍝ Remove this item from the node & update

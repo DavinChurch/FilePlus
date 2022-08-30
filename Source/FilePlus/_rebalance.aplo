@@ -18,7 +18,7 @@
              ⍝ Rotate successor key/pointer down from parent node
              ptrs,←pptrs[at+1] ⋄ keys,←pkeys[2÷⍨at+1]
              :If ~leaf ⍝ We're working with branch nodes - handle an extra subtree pointer
-                ⍝ Rotate first subtree pointer from beginning of right sibling to me
+                 ⍝ Rotate first subtree pointer from beginning of right sibling to me
                  ptrs,←1↑1⊃sibling ⋄ (1⊃sibling)↓⍨←1
              :EndIf
              ⍝ Rotate right sibling's first key/pointer up into parent node
@@ -31,7 +31,7 @@
              ⍝ Rotate predecessor key/pointer down from parent node
              ptrs,⍨←pptrs[at-1] ⋄ keys,⍨←pkeys[2÷⍨at-1]
              :If ~leaf ⍝ We're working with branch nodes - handle an extra subtree pointer
-                ⍝ Rotate last subtree pointer from end of left sibling to me
+                 ⍝ Rotate last subtree pointer from end of left sibling to me
                  ptrs,⍨←⊢/1⊃sibling ⋄ (1⊃sibling)↓⍨←¯1
              :EndIf
              ⍝ Rotate left sibling's last key/pointer up into parent node
@@ -72,10 +72,10 @@
      :EndIf
      pptrs pkeys ⎕FREPLACE tn,2⊃path ⍝ And the parent has changed as well
 
-    ⍝ Finally, check to see if the root has gone away and replace it with sole child if so
+     ⍝ Finally, check to see if the root has gone away and replace it with sole child if so
      :If (2≥≢path)∧(0=≢pkeys)∧1=≢pptrs ⍝ Have we collapsed the root to nothing at all?
      :AndIf pptrs≡1↑path ⍝ (And a safety check to make sure it's really us)
-        ⍝ Remove it from the tree by replacing it with my merged node (happens infrequently)
+         ⍝ Remove it from the tree by replacing it with my merged node (happens infrequently)
          free∪←1⊃path ⍝ Discard only child (that got moved to root)
          ((pptrs pkeys)←ptrs keys)⎕FREPLACE tn,2⊃path ⋄ (ptrs keys)←bmin⍴¨0 0
      :EndIf
