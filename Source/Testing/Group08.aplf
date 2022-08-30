@@ -1,0 +1,24 @@
+ Group08;io;dir;tf;sharing;share;times;i;tid
+ io←#.FilePlus.IO ⋄ dir←#.FilePlus.Dir ⋄ sharing←#.FilePlus.Sharing ⍝ Easier references to tested functions
+ ⎕FUNTIE ⎕FNUMS ⋄ 1 ⎕NDELETE tf←TestFile ⋄ (#.FilePlus.Create Pass 1)tf ⍝ Create a fresh file to test with
+
+⍝ Write and read a component using each type of file-holding available
+ :For share :In 0 1 2 3
+     sharing share
+     'Testing'(io Pass_{1})1 'Testing'
+     (io Pass'Testing')1 'Testing'
+     '⌹'(dir Pass ⍬)1 ⍝ Just to make sure that Dir holds as well
+ :EndFor
+
+ sharing 0
+ :For i :In ⍳10000 ⍝ Fill up the file with a lot of data
+     i(io Pass_{1})1('Big[',(⍕i),']')
+     i(io Pass_{1})1('BIG[',(⍕i),']')
+ :EndFor
+ sharing 2 ⍝ We only have an easy way to test :Hold here
+ times←0 3⍴0
+ ⎕TSYNC tid←1 Group08Try&¨⍳5
+ ({∧/20<¯2-/⍵}Pass 1)times[;3] ⍝ File verification better take at least 20ms each to complete sequentially
+
+ sharing 0 ⍝ Reset what we were playing with
+ ⎕FUNTIE 1 ⋄ 0(⎕NDELETE Pass 1)tf ⍝ Let's shut down and get rid of the evidence

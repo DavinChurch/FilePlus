@@ -15,6 +15,7 @@ The following functions are available for use:
 | `Dir` | Perform named-component directory management, if needed. |
 | `Tie` | Tie and untie files.  (Only needed if special functionality is desired.) |
 | `Create` | Create a new file.  (Only needed if special functionality is desired.) |
+| `Sharing` | Adjust global setting for automatic file sharing features, if needed. |
 
 ## General Notes
 Component names can be almost any APL value except for empty arrays and simple scalars.  Simple character scalars are accepted but raveled before use.  Component names that are simple character vectors are further processed for more convenient use but other names are used exactly as given.  Therefore it is reasonable to use matrices, nested arrays, etc. of any reasonable size, shape, depth, or type as component names.  (Floating point values are discouraged within a component name due to representational rounding difficulties.)
@@ -38,7 +39,7 @@ This directory contains a PDF file with extensive documentation on the toolkit a
 
 ## The Source/FilePlus Directory
 
-This directory is intended to be imported and used as a complete namespace and contains all the code needed to use this package. Locally-assigned references to any of the functions may be placed in the application namespace for easier use, if desired. Other functions/operators in this namespace besides the four mentioned above are for internal use only rather than public use.
+This directory is intended to be imported and used as a complete namespace and contains all the code needed to use this package. Locally-assigned references to any of the functions may be placed in the application namespace for easier use, if desired. Other functions/operators in this namespace besides the five mentioned above are for internal use only rather than public use.
 
 ## The Source/FilePlus/API Directory
 

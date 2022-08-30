@@ -15,9 +15,9 @@
 ⍝
 ⍝ Written 27 November 2005 by Davin Church of Creative Software Design
 ⍝ Converted to Dyalog APL 23 April 2021 by Davin Church of Creative Software Design
-⍝ Last modified 18 July 2021 by Davin Church of Creative Software Design
+⍝ Last modified 4 April 2022 by Davin Church of Creative Software Design
 
- ⎕TRAP←,⊂0 'C' '(⊃⎕DM) ⎕SIGNAL ⎕EN' ⍝ Pass any errors upwards to caller
+ ⎕TRAP←,⊂0 'C' '→Crash' ⍝ Errors should exit via error-handling code
  ⍝ Clean up file name
  'Not a file name'⎕SIGNAL 22/⍨((,1)≢⍴⍴1/file)∨~0 2∊⍨10|⎕DR file
  'Missing file name'⎕SIGNAL 22/⍨0=≢file←∆dlt file
@@ -42,4 +42,7 @@
      :While (2⊃⎕FSIZE tieno)∊reserved ⋄ :Until 0=''⎕FAPPEND tieno
      (,¨(reserved ⎕FAPPEND tieno)(⎕UCS 0))⎕FREPLACE tieno,1
  :EndIf
-⍝ Ok, we're ready for use
+
+ :Return ⍝ Ok, we're ready for use
+
+Crash:(⊃⎕DM)⎕SIGNAL ⎕EN ⍝ Pass any errors upwards to caller

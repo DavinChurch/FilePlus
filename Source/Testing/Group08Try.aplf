@@ -1,0 +1,7 @@
+ tn Group08Try trial;dir;time
+⍝∇ Perform some significant file I/O with auto-:Hold in effect to see if it properly synchronizes in background
+ time←⎕AI[3]
+ dir←#.FilePlus.Dir
+ '⌹'(dir Pass ⍬)tn ⍝ Just something to stay busy for a few seconds
+ time,←⎕AI[3]
+ times⍪←trial,time ⍝ Update global

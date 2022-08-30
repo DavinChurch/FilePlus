@@ -1,0 +1,1 @@
+ Sharing←{0≠⎕NC'⍺':⎕SIGNAL 2 ⋄ 0::⎕SIGNAL⊂(⊂¨'EN' 'EM' 'Message'),¨⊂¨⎕DMX.(EN EM Message) ⋄ 1:was←##.Sharing ⍵}

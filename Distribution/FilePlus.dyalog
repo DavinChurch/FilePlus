@@ -1,6 +1,8 @@
 ﻿:Namespace FilePlus
 ⍝ === VARIABLES ===
 
+AutoHold←0
+
 TreeSize←100
 
 
@@ -25,9 +27,9 @@ TreeSize←100
      ⍝
      ⍝ Written 27 November 2005 by Davin Church of Creative Software Design
      ⍝ Converted to Dyalog APL 23 April 2021 by Davin Church of Creative Software Design
-     ⍝ Last modified 18 July 2021 by Davin Church of Creative Software Design
+     ⍝ Last modified 4 April 2022 by Davin Church of Creative Software Design
      
- ⎕TRAP←,⊂0 'C' '(⊃⎕DM) ⎕SIGNAL ⎕EN' ⍝ Pass any errors upwards to caller
+ ⎕TRAP←,⊂0 'C' '→Crash' ⍝ Errors should exit via error-handling code
       ⍝ Clean up file name
  'Not a file name'⎕SIGNAL 22/⍨((,1)≢⍴⍴1/file)∨~0 2∊⍨10|⎕DR file
  'Missing file name'⎕SIGNAL 22/⍨0=≢file←∆dlt file
@@ -52,10 +54,13 @@ TreeSize←100
      :While (2⊃⎕FSIZE tieno)∊reserved ⋄ :Until 0=''⎕FAPPEND tieno
      (,¨(reserved ⎕FAPPEND tieno)(⎕UCS 0))⎕FREPLACE tieno,1
  :EndIf
-     ⍝ Ok, we're ready for use
+     
+ :Return ⍝ Ok, we're ready for use
+     
+Crash:(⊃⎕DM)⎕SIGNAL ⎕EN ⍝ Pass any errors upwards to caller
 ∇
 
-∇ result←function Dir file;io;untie;comp;tn;t;sub;sdir;emsg;dpath;spath;mlist;⎕TRAP;fixio;used
+∇ result←function Dir file;io;untie;comp;tn;t;sub;sdir;emsg;dpath;spath;mlist;⎕TRAP;fixio;used;hold;sig
      ⍝ Directory management for a FilePlus file.
      ⍝
      ⍝ Syntax:
@@ -88,6 +93,7 @@ TreeSize←100
      ⍝               wild-card-matching character).
      ⍝       '↓'     Delete the named (or numbered) component from the file.
      ⍝               Deleted components are then available for later re-use.
+     ⍝?              (Future thought: Use ↓↓ to also empty the component contents?)
      ⍝       '≠'     Return a list of all user-reserved component numbers.
      ⍝       '⍬'     Return a list of all free-space component numbers.
      ⍝       '⌹'     Validate file directory structure & return unindexed component #s.
@@ -131,14 +137,14 @@ TreeSize←100
      ⍝               and they will then be available for re-use.
      ⍝ Written 27 November 2005 by Davin Church of Creative Software Design
      ⍝ Converted to Dyalog APL 24 April 2021 by Davin Church of Creative Software Design
-     ⍝ Last modified 18 July 2021 by Davin Church of Creative Software Design
+     ⍝ Last modified 4 April 2022 by Davin Church of Creative Software Design
      
  io←(⊃1⌽⎕RSI).⎕IO ⋄ untie←0
- ⎕TRAP←,⊂0 'C' '⎕FUNTIE untie ⋄ (⊃⎕DM) ⎕SIGNAL ⎕EN' ⍝ Pass any errors upwards to caller
+ ⎕TRAP←,⊂0 'C' '→Crash' ⍝ Errors should exit via error-handling code
  'Argument Length Error'⎕SIGNAL 5/⍨~(⊂⍴1/file)∊,¨⍳2
  (file comp)←2↑file,'' '' ⍝ Separate arguments
      
-      ⍝ *** Process the file ID
+     ⍝ *** Process the file ID
  :Select 10|⎕DR file
  :CaseList 1 3 5 ⍝ They gave us a file tie number
      ⎕SIGNAL 18/⍨(1≠≢file)∨~(tn←|⊃∊file)∊⎕FNUMS
@@ -148,207 +154,222 @@ TreeSize←100
      'Illegal file name or tie number'⎕SIGNAL 18
  :EndSelect
      
-      ⍝ *** Check the file's master directory to make sure it at least appears to be in our file format
- :If 1≠1⊃⎕FSIZE tn ⋄ ⎕FUNTIE untie ⋄ 'Missing master file directory'⎕SIGNAL 23 ⋄ :EndIf
- :If 1=2⊃⎕FSIZE tn
-     ⍬(0⍴⊂⍬)⎕FAPPEND tn ⍝ Automatically initialize an empty file
- :ElseIf (⊂t←⎕FREAD tn,1)∊⍬''
-     ⍬(0⍴⊂⍬)⎕FREPLACE tn,1 ⍝ Correct empty user-created directory
- :ElseIf (,2)≢⍴t ⍝ Does it look about right?
- :OrIf ~(∧/1=(≢⍴)¨t)∧(1≤|≡2⊃t)∧(1=|≡1⊃t)∧1 3∊⍨10|⎕DR 1⊃t
-     ⎕FUNTIE untie ⋄ 'Invalid master file directory'⎕SIGNAL 23
- :EndIf
+ hold←⌽2 2⊤⌊|⊃∊AutoHold ⍝ Are we providing automatic ⎕FHOLD/:Hold?
+ :Hold hold[2]/⊂'FilePlus:',⍕tn ⍝ Conditionally :Hold across application threads
+     :If hold[1] ⋄ ⎕FHOLD tn ⋄ :EndIf ⍝ ⎕FHOLD destroys previous ⎕FHOLDs
      
-      ⍝ *** Component ID processing
- sub←⍬ ⍝ Allow subscript specifications after names...
- :If (0=≢⍴comp)∧5 7∊⍨10|⎕DR comp ⋄ :AndIf comp=⌊|comp ⋄ comp←⌊comp ⋄ :EndIf
- :If (0=≢⍴comp)∧1 3∊⍨10|⎕DR comp ⍝ They gave us a raw component number (for use like a normal file)
-          ⍝ We don't need to do anything here - just leave it as-is
- :Else ⍝ They gave us a component name (almost any structure permitted)
-          ⍝ *** Named component analysis
-          ⍝ Simple scalars (of all non-integer types) are reserved for internal use
-     :If 0=≡comp ⋄ comp←,comp ⋄ :EndIf ⍝ Force scalars to 1⍴ vectors
-          ⍝ *** Pre-process component name (including subscripts)
-     sub←io _subscript comp ⋄ comp←⊃sub ⋄ sub↓⍨←1 ⍝ Allow subscript specifications after names
- :EndIf
-     
-      ⍝ *** Process function
- :Select ⊃function←,function
-     
- :Case '?'               ⍝ === Directory list (of master directory)
-     :If ×≢sub ⋄ ⎕FUNTIE untie ⋄ 'Invalid use of subscripting'⎕SIGNAL 2 ⋄ :EndIf ⍝ Should we allow rank-searching??
-     result←2⊃1(tn _list 1)comp ⍝ Return only master name list (optionally restricted by component-name content)
-     
- :CaseList '∊⍳'          ⍝ === Check for existence (or locate cmp #)
-     :If 0∊⍴comp ⋄ ⎕FUNTIE untie ⋄ 'Component name missing'⎕SIGNAL 2 ⋄ :EndIf
-     :If ∧/0 1∊×≢¨sub ⋄ ⎕FUNTIE untie ⋄ 'Incomplete component subscript'⎕SIGNAL 2 ⋄ :EndIf
-     :If (0∊≢¨sub)∧'⍳'=⊃function ⋄ ⎕FUNTIE untie ⋄ 'Whole arrays do not have component numbers'⎕SIGNAL 16 ⋄ :EndIf
-     :If 0=sdir←result←⊃(tn _find ¯1)comp
-         result←0 ⍝ This component name is not defined with that rank
-     :Else
-              ⍝ *** Named component exists - locate it
-         :If ×≢sub ⍝ If we've got subscripts, then we'll have a subdirectory
-         :AndIf ∧/×≢¨sub ⍝ And they've specified an explicit subscript?
-             result←⊃(tn _find(-sdir))sub
-         :EndIf
+          ⍝ *** Check the file's master directory to make sure it at least appears to be in our file format
+     :If 1≠1⊃⎕FSIZE tn ⋄ :GoTo Signal,sig←23 'Missing master file directory' ⋄ :EndIf
+     :If 1=2⊃⎕FSIZE tn
+         ⍬(0⍴⊂⍬)⎕FAPPEND tn ⍝ Automatically initialize an empty file
+     :ElseIf (⊂t←⎕FREAD tn,1)∊⍬''
+         ⍬(0⍴⊂⍬)⎕FREPLACE tn,1 ⍝ Correct empty user-created directory
+     :ElseIf (,2)≢⍴t ⍝ Does it look about right?
+     :OrIf ~(∧/1=(≢⍴)¨t)∧(1≤|≡2⊃t)∧(1=|≡1⊃t)∧1 3∊⍨10|⎕DR 1⊃t
+         :GoTo Signal,sig←23 'Invalid master file directory'
      :EndIf
-     :If '∊'∊function ⋄ result←×result ⋄ :EndIf ⍝ Just signal presence as requested
      
- :Case '['               ⍝ === Functions for subscripted arrays
-     :If 0∊⍴comp ⋄ ⎕FUNTIE untie ⋄ 'Component name missing'⎕SIGNAL 2 ⋄ :EndIf
-     :If ×≢sub ⍝ Were there the required rank-indicators (at least) on the name?
-         :If io=0 ⋄ fixio←{1 3∊⍨10|⎕DR ⍵:⍵-1 ⋄ ⍵} ⋄ :Else ⋄ fixio←⊢ ⋄ :EndIf ⍝ Report ⎕IO=0 back in that origin
-         :If 0=sdir←⊃(tn _find ¯1)comp
-             result←⍬ ⍝ This component name is not defined with that rank
+          ⍝ *** Component ID processing
+     sub←⍬ ⍝ Allow subscript specifications after names...
+     :If (0=≢⍴comp)∧5 7∊⍨10|⎕DR comp ⋄ :AndIf comp=⌊|comp ⋄ comp←⌊comp ⋄ :EndIf
+     :If (0=≢⍴comp)∧1 3∊⍨10|⎕DR comp ⍝ They gave us a raw component number (for use like a normal file)
+              ⍝ We don't need to do anything here - just leave it as-is
+     :Else ⍝ They gave us a component name (almost any structure permitted)
+              ⍝ *** Named component analysis
+              ⍝ Simple scalars (of all non-integer types) are reserved for internal use
+         :If 0=≡comp ⋄ comp←,comp ⋄ :EndIf ⍝ Force scalars to 1⍴ vectors
+              ⍝ *** Pre-process component name (including subscripts)
+         sub←io _subscript comp ⋄ comp←⊃sub ⋄ sub↓⍨←1 ⍝ Allow subscript specifications after names
+     :EndIf
+     
+          ⍝ *** Process function
+     :Select ⊃function←,function
+     
+     :Case '?'               ⍝ === Directory list (of master directory)
+         :If ×≢sub ⋄ :GoTo Signal,sig←2 'Invalid use of subscripting' ⋄ :EndIf ⍝ Should we allow rank-searching??
+         result←2⊃1(tn _list 1)comp ⍝ Return only master name list (optionally restricted by component-name content)
+     
+     :CaseList '∊⍳'          ⍝ === Check for existence (or locate cmp #)
+         :If 0∊⍴comp ⋄ :GoTo Signal,sig←2 'Component name missing' ⋄ :EndIf
+         :If ∧/0 1∊×≢¨sub ⋄ :GoTo Signal,sig←2 'Incomplete component subscript' ⋄ :EndIf
+         :If (0∊≢¨sub)∧'⍳'=⊃function ⋄ :GoTo Signal,sig←16 'Whole arrays do not have component numbers' ⋄ :EndIf
+         :If 0=sdir←result←⊃(tn _find ¯1)comp
+             result←0 ⍝ This component name is not defined with that rank
          :Else
-             :Select function ⍝ Perform the specifically-requested array function
-             :Case '[?]' ⍝ Are they asking for the entire key list?
-                 result←2⊃(2×∨/×≢¨sub)(tn _list sdir)sub
-                      ⍝ A list of key values is returned for this function:
-                      ⍝   For a 1-D array this is a vector of single sub-values; For an n-D array this is Mixed to an n-column matrix
-                 :If 1=≢⊃result ⋄ result←fixio¨⊃¨result ⋄ :Else ⋄ result←fixio¨↑result ⋄ :EndIf
-             :Case '[⍳]' ⍝ Are they asking for component #s only?
-                 result←1⊃(2×∨/×≢¨sub)(tn _list sdir)sub
-                      ⍝ This is a simple numeric vector
-             :Case '[>]' ⍝ Are they asking for a successor key from this list?
-                 result←fixio¨(tn _successor sdir)sub
-                      ⍝ Only a single key value is returned for this function:
-                      ⍝   For a 1-D array this is Disclosed to a single simple value; For an n-D array this is a [nested] vector of sub-values
-                 :If 1=≢result ⋄ result←⊃result ⋄ :EndIf
-             :Case '[<]' ⍝ Are they asking for a predecessor key from this list?
-                 result←fixio¨(tn _predecessor sdir)sub
-                      ⍝ Only a single key value is returned for this function:
-                      ⍝   For a 1-D array this is Disclosed to a single simple value; For an n-D array this is a [nested] vector of sub-values
-                 :If 1=≢result ⋄ result←⊃result ⋄ :EndIf
-             :Case '[+]' ⍝ Are they asking for a prefixed-key list?
-                 result←2⊃¯2(tn _list sdir)sub
-                      ⍝ A list of key values is returned for this function:
-                      ⍝   For a 1-D array this is a vector of single sub-values; For an n-D array this is Mixed to an n-column matrix
-                 :If 1=≢⊃result ⋄ result←fixio¨⊃¨result ⋄ :Else ⋄ result←fixio¨↑result ⋄ :EndIf
+                  ⍝ *** Named component exists - locate it
+             :If ×≢sub ⍝ If we've got subscripts, then we'll have a subdirectory
+             :AndIf ∧/×≢¨sub ⍝ And they've specified an explicit subscript?
+                 result←⊃(tn _find(-sdir))sub
+             :EndIf
+         :EndIf
+         :If '∊'∊function ⋄ result←×result ⋄ :EndIf ⍝ Just signal presence as requested
+     
+     :Case '['               ⍝ === Functions for subscripted arrays
+         :If 0∊⍴comp ⋄ :GoTo Signal,sig←2 'Component name missing' ⋄ :EndIf
+         :If ×≢sub ⍝ Were there the required rank-indicators (at least) on the name?
+             :If io=0 ⋄ fixio←{1 3∊⍨10|⎕DR ⍵:⍵-1 ⋄ ⍵} ⋄ :Else ⋄ fixio←⊢ ⋄ :EndIf ⍝ Report ⎕IO=0 back in that origin
+             :If 0=sdir←⊃(tn _find ¯1)comp
+                 result←⍬ ⍝ This component name is not defined with that rank
              :Else
-                 ⎕FUNTIE untie ⋄ 'Invalid array-subscripting function'⎕SIGNAL 11
-             :EndSelect
-         :EndIf
-     :Else
-         ⎕FUNTIE untie ⋄ 'Component subscript notation missing'⎕SIGNAL 2
-     :EndIf
-     
- :Case '↓'               ⍝ === Delete component
-     :If (0=≢⍴comp)∧1 3∊⍨10|⎕DR comp ⍝ They gave us a raw component number (when using unnamed components in the file)
-              ⍝ --- Deleting a raw component #
-              ⍝ Check to see if they're trying to delete something they're not supposed to
-         :If comp=1
-             ⎕FUNTIE untie ⋄ 'Unable to delete master file index component'⎕SIGNAL 20
-         :ElseIf (comp<1⊃⎕FSIZE tn)∨comp≥2⊃⎕FSIZE tn
-             ⎕FUNTIE untie ⋄ 'Non-existent component number to delete'⎕SIGNAL 20
-         :ElseIf ×t←⊃(tn _find ¯1)⎕UCS 0 ⍝ Do we have any reserved components?
-         :AndIf comp∊⎕FREAD tn,t
-             ⎕FUNTIE untie ⋄ 'Unable to delete reserved component number'⎕SIGNAL 19
-         :ElseIf ×t←⊃(tn _find ¯1)⎕UCS 127 ⍝ Do we have any freed components?
-         :AndIf comp∊⎕FREAD tn,t
-             ⎕FUNTIE untie ⋄ 'Unable to delete unused component number'⎕SIGNAL 19
-         :ElseIf comp∊1⊃mlist←(tn _list 1)'' ⍝ Will be a slow check on big files with subscripts, but important for safety
-             ⎕FUNTIE untie ⋄ 'Unable to delete named component by number'⎕SIGNAL 19
-         :ElseIf ×≢t←(×1 _keyrank¨2⊃mlist)/2⊃mlist ⍝ Are any of these names subscripted arrays?
-             :For t :In t ⍝ Loop through all subscripted array names ⍝ This can take a while if they're big
-                 :Trap 0
-                     used←'∞' '∞'(tn _validate(((2⊃mlist){⎕CT←0 ⋄ ⍺⍳⍵}⊂t)⊃1⊃mlist))1 _keyrank t
+                 :Select function ⍝ Perform the specifically-requested array function
+                 :Case '[?]' ⍝ Are they asking for the entire key list?
+                     result←2⊃(2×∨/×≢¨sub)(tn _list sdir)sub
+                          ⍝ A list of key values is returned for this function:
+                          ⍝   For a 1-D array this is a vector of single sub-values; For an n-D array this is Mixed to an n-column matrix
+                     :If 1=≢⊃result ⋄ result←fixio¨⊃¨result ⋄ :Else ⋄ result←fixio¨↑result ⋄ :EndIf
+                 :Case '[⍳]' ⍝ Are they asking for component #s only?
+                     result←1⊃(2×∨/×≢¨sub)(tn _list sdir)sub
+                          ⍝ This is a simple numeric vector
+                 :Case '[>]' ⍝ Are they asking for a successor key from this list?
+                     result←fixio¨(tn _successor sdir)sub
+                          ⍝ Only a single key value is returned for this function:
+                          ⍝   For a 1-D array this is Disclosed to a single simple value; For an n-D array this is a [nested] vector of sub-values
+                     :If 1=≢result ⋄ result←⊃result ⋄ :EndIf
+                 :Case '[<]' ⍝ Are they asking for a predecessor key from this list?
+                     result←fixio¨(tn _predecessor sdir)sub
+                          ⍝ Only a single key value is returned for this function:
+                          ⍝   For a 1-D array this is Disclosed to a single simple value; For an n-D array this is a [nested] vector of sub-values
+                     :If 1=≢result ⋄ result←⊃result ⋄ :EndIf
+                 :Case '[+]' ⍝ Are they asking for a prefixed-key list?
+                     result←2⊃¯2(tn _list sdir)sub
+                          ⍝ A list of key values is returned for this function:
+                          ⍝   For a 1-D array this is a vector of single sub-values; For an n-D array this is Mixed to an n-column matrix
+                     :If 1=≢⊃result ⋄ result←fixio¨⊃¨result ⋄ :Else ⋄ result←fixio¨↑result ⋄ :EndIf
                  :Else
-                     ⎕FUNTIE untie ⋄ 'Unable to delete component number from damaged file'⎕SIGNAL 23
-                 :EndTrap
-                 :If comp∊used
-                     ⎕FUNTIE untie ⋄ 'Unable to delete named component array item by number'⎕SIGNAL 19
-                 :EndIf
-             :EndFor
-         :EndIf
-         tn _free comp ⍝ This component number is OK to release (it's not indexed anywhere)
-     :Else
-               ⍝ --- Deleting a named component
-         :If 0∊⍴comp ⋄ ⎕FUNTIE untie ⋄ 'Component name missing'⎕SIGNAL 2 ⋄ :EndIf
-         :If ∧/0 1∊×≢¨sub ⋄ ⎕FUNTIE untie ⋄ 'Incomplete component subscript'⎕SIGNAL 2 ⋄ :EndIf
-         :If 0=⊃dpath←(tn _find ¯1)comp ⋄ ⎕FUNTIE untie ⋄ 'Component Value Error'⎕SIGNAL 20 ⋄ :EndIf
-         :If 0=≢sub
-             tn _free tn _delete dpath ⍝ Remove non-array component name from the master directory
+                     :GoTo Signal,sig←11 'Invalid array-subscripting function'
+                 :EndSelect
+             :EndIf
          :Else
-             :If ∧/0=≢¨sub ⍝ Delete the entire array
-                 :Trap 0
-                     comp←'∞' '∞'(tn _validate(⊃dpath))≢sub ⍝ Get list of all array data & directory components for freeing
-                 :Else
-                     ⎕FUNTIE untie ⋄ 'Unable to delete array from damaged file'⎕SIGNAL 23
-                 :EndTrap
-                 comp∪←tn _delete dpath ⍝ Remove the array name itself from the master directory
-                 tn _free comp ⍝ Free all the loose pieces
-             :Else ⍝ Delete just one subscript from the array
-                 :If 0=⊃spath←(tn _find(-⊃dpath))sub
-                     ⎕FUNTIE untie ⋄ 'Component Value Error'⎕SIGNAL 20
-                 :Else
-                     tn _free tn _delete spath ⍝ Remove and free B-tree entry and the data component
-                         ⍝ If that was the last subscript in the array going away, we need to delete the array, too
-                     :If (1=1-⍨≢dpath)∧1=2 2⊃dpath ⍝ Shortcut to avoid checking all cases
-                     :AndIf 0=⊃(tn _lowest(⊃dpath))⍬ ⍝ See if there's an initial key available
-                         tn _free tn _delete dpath ⍝ Get rid of the array name itself from the master directory
+             :GoTo Signal,sig←2 'Component subscript notation missing'
+         :EndIf
+     
+     :Case '↓'               ⍝ === Delete component
+         :If (0=≢⍴comp)∧1 3∊⍨10|⎕DR comp ⍝ They gave us a raw component number (when using unnamed components in the file)
+                  ⍝ --- Deleting a raw component #
+                  ⍝ Check to see if they're trying to delete something they're not supposed to
+             :If comp=1
+                 :GoTo Signal,sig←20 'Unable to delete master file index component'
+             :ElseIf (comp<1⊃⎕FSIZE tn)∨comp≥2⊃⎕FSIZE tn
+                 :GoTo Signal,sig←20 'Non-existent component number to delete'
+             :ElseIf ×t←⊃(tn _find ¯1)⎕UCS 0 ⍝ Do we have any reserved components?
+             :AndIf comp∊⎕FREAD tn,t
+                 :GoTo Signal,sig←19 'Unable to delete reserved component number'
+             :ElseIf ×t←⊃(tn _find ¯1)⎕UCS 127 ⍝ Do we have any freed components?
+             :AndIf comp∊⎕FREAD tn,t
+                 :GoTo Signal,sig←19 'Unable to delete unused component number'
+             :ElseIf comp∊1⊃mlist←(tn _list 1)'' ⍝ Will be a slow check on big files with subscripts, but important for safety
+                 :GoTo Signal,sig←19 'Unable to delete named component by number'
+             :ElseIf ×≢t←(×1 _keyrank¨2⊃mlist)/2⊃mlist ⍝ Are any of these names subscripted arrays?
+                 :For t :In t ⍝ Loop through all subscripted array names ⍝ This can take a while if they're big
+                     :Trap 0
+                         used←'∞' '∞'(tn _validate(((2⊃mlist){⎕CT←0 ⋄ ⍺⍳⍵}⊂t)⊃1⊃mlist))1 _keyrank t
+                     :Else
+                         :GoTo Signal,sig←23 'Unable to delete component number from damaged file'
+                     :EndTrap
+                     :If comp∊used
+                         :GoTo Signal,sig←19 'Unable to delete named component array item by number'
+                     :EndIf
+                 :EndFor
+             :EndIf
+             tn _free comp ⍝ This component number is OK to release (it's not indexed anywhere)
+         :Else
+                  ⍝ --- Deleting a named component
+             :If 0∊⍴comp ⋄ :GoTo Signal,sig←2 'Component name missing' ⋄ :EndIf
+             :If ∧/0 1∊×≢¨sub ⋄ :GoTo Signal,sig←2 'Incomplete component subscript' ⋄ :EndIf
+             :If 0=⊃dpath←(tn _find ¯1)comp ⋄ :GoTo Signal,sig←20 'Component Value Error' ⋄ :EndIf
+             :If 0=≢sub
+                 tn _free tn _delete dpath ⍝ Remove non-array component name from the master directory
+             :Else
+                 :If ∧/0=≢¨sub ⍝ Delete the entire array
+                     :Trap 0
+                         comp←'∞' '∞'(tn _validate(⊃dpath))≢sub ⍝ Get list of all array data & directory components for freeing
+                     :Else
+                         :GoTo Signal,sig←23 'Unable to delete array from damaged file'
+                     :EndTrap
+                     comp∪←tn _delete dpath ⍝ Remove the array name itself from the master directory
+                     tn _free comp ⍝ Free all the loose pieces
+                 :Else ⍝ Delete just one subscript from the array
+                     :If 0=⊃spath←(tn _find(-⊃dpath))sub
+                         :GoTo Signal,sig←20 'Component Value Error'
+                     :Else
+                         tn _free tn _delete spath ⍝ Remove and free B-tree entry and the data component
+                              ⍝ If that was the last subscript in the array going away, we need to delete the array, too
+                         :If (1=1-⍨≢dpath)∧1=2 2⊃dpath ⍝ Shortcut to avoid checking all cases
+                         :AndIf 0=⊃(tn _lowest(⊃dpath))⍬ ⍝ See if there's an initial key available
+                             tn _free tn _delete dpath ⍝ Get rid of the array name itself from the master directory
+                         :EndIf
                      :EndIf
                  :EndIf
              :EndIf
          :EndIf
-     :EndIf
      
- :Case '≠'               ⍝ === Reserved component list
-     :If (,0)≢⍴comp ⋄ ⎕FUNTIE untie ⋄ 'Component name not permitted'⎕SIGNAL 2 ⋄ :EndIf
-     :If 0=t←⊃(tn _find ¯1)⎕UCS 0 ⍝ Do we have any reserved components?
-         result←⍬ ⍝ Nope
+     :Case '≠'               ⍝ === Reserved component list
+         :If (,0)≢⍴comp ⋄ :GoTo Signal,sig←2 'Component name not permitted' ⋄ :EndIf
+         :If 0=t←⊃(tn _find ¯1)⎕UCS 0 ⍝ Do we have any reserved components?
+             result←⍬ ⍝ Nope
+         :Else
+             result←⎕FREAD tn,t ⍝ These are they
+         :EndIf
+     
+     :Case '⍬'               ⍝ === Free-space (available) component list
+         :If (,0)≢⍴comp ⋄ :GoTo Signal,sig←2 'Component name not permitted' ⋄ :EndIf
+         :If 0=t←⊃(tn _find ¯1)⎕UCS 127 ⍝ Do we have any free-space components?
+             result←⍬ ⍝ Nope
+         :Else
+             result←{⍵[⍋⍵]}⎕FREAD tn,t ⍝ These are they (sorted)
+         :EndIf
+     
+     :Case '⌹'               ⍝ === Validate directory; return unindexed cmp #s
+         :If (,0)≢⍴comp ⋄ :GoTo Signal,sig←2 'Component name not permitted' ⋄ :EndIf
+              ⍝ Validate B-tree file root and all connected trees, and return entire list of indexed file components
+              ⍝ If an error is detected, _validate will ⎕SIGNAL the problem which will be passed upwards by ⎕TRAP
+         result←'∞' '∞'(tn _validate 1)¯1 ⍝ Start at the top and walk all the trees in the file
+              ⍝ Ok, we've got the list of all known-used component #s - check them for validity
+         :If ∨/t←(result<1⊃⎕FSIZE tn)∨(result≥2⊃⎕FSIZE tn)∨(result≠⌊|result)∨~1 3∊⍨10|⎕DR result
+             :GoTo Signal,sig←23('Damaged file!  Invalid component numbers: ',⍕t/result)
+         :EndIf
+         :If ∨/t←~≠result ⍝ Are there any duplicates?
+             :GoTo Signal,sig←23('Damaged file!  Cross-linked components: ',⍕∪t/result)
+         :EndIf
+              ⍝ The final indexed list looks OK, so return the opposing list of all the (other) un-indexed (manual) component #s
+         result~⍨←⍳¯1+2⊃⎕FSIZE tn
+     
      :Else
-         result←⎕FREAD tn,t ⍝ These are they
-     :EndIf
-     
- :Case '⍬'               ⍝ === Free-space (available) component list
-     :If (,0)≢⍴comp ⋄ ⎕FUNTIE untie ⋄ 'Component name not permitted'⎕SIGNAL 2 ⋄ :EndIf
-     :If 0=t←⊃(tn _find ¯1)⎕UCS 127 ⍝ Do we have any free-space components?
-         result←⍬ ⍝ Nope
-     :Else
-         result←{⍵[⍋⍵]}⎕FREAD tn,t ⍝ These are they (sorted)
-     :EndIf
-     
- :Case '⌹'               ⍝ === Validate directory; return unindexed cmp #s
-     :If (,0)≢⍴comp ⋄ ⎕FUNTIE untie ⋄ 'Component name not permitted'⎕SIGNAL 2 ⋄ :EndIf
-          ⍝ Validate B-tree file root and all connected trees, and return entire list of indexed file components
-          ⍝ If an error is detected, _validate will ⎕SIGNAL the problem which will be passed upwards by ⎕TRAP
-     result←'∞' '∞'(tn _validate 1)¯1 ⍝ Start at the top and walk all the trees in the file
-          ⍝ Ok, we've got the list of all known-used component #s - check them for validity
-     :If ∨/t←(result<1⊃⎕FSIZE tn)∨(result≥2⊃⎕FSIZE tn)∨(result≠⌊|result)∨~1 3∊⍨10|⎕DR result
-         ⎕FUNTIE untie ⋄ ('Damaged file!  Invalid component numbers: ',⍕t/result)⎕SIGNAL 23
-     :EndIf
-     :If ∨/t←~≠result ⍝ Are there any duplicates?
-         ⎕FUNTIE untie ⋄ ('Damaged file!  Cross-linked components: ',⍕∪t/result)⎕SIGNAL 23
-     :EndIf
-          ⍝ The final indexed list looks OK, so return the opposing list of all the (other) un-indexed (manual) component #s
-     result~⍨←⍳¯1+2⊃⎕FSIZE tn
-     
- :Else
-     ⎕FUNTIE untie ⋄ 'Unknown function request'⎕SIGNAL 11
- :EndSelect
+         :GoTo Signal,sig←11 'Unknown function request'
+     :EndSelect
+ :EndHold
      
  ⎕FUNTIE untie ⍝ Untie any temporary file tie when we're done
+ :If hold[1] ⋄ ⎕FHOLD ⍬ ⋄ :EndIf ⍝ All ⎕FHOLDs may be released
+ :Return
+     
+Signal:⎕FUNTIE untie ⍝ Untie any temporary file tie when we exit with an error
+ :If hold[1] ⋄ ⎕FHOLD ⍬ ⋄ :EndIf ⍝ All ⎕FHOLDs may be released
+ ⎕SIGNAL/⌽sig ⍝ Produce a specific APL error (⎕EN,⎕DM)
+     
+Crash:⎕FUNTIE untie ⍝ Untie any temporary file tie when we get an error
+ :If hold[1] ⋄ ⎕FHOLD ⍬ ⋄ :EndIf ⍝ All ⎕FHOLDs may be released
+ (⊃⎕DM)⎕SIGNAL ⎕EN ⍝ Pass any errors upwards to caller
 ∇
 
-∇ data←{newdata}IO item;cn;comp;file;read;sub;t;tn;untie;io;⎕TRAP;dpath;spath
-      ⍝ Read or write a named (or numbered) component of an APL component file.
-      ⍝ (File component #1 is reserved for holding the master file directory.)
-      ⍝
-      ⍝ Syntax:
-      ⍝   Reading data:
-      ⍝       <data> ← IO <file> <component>
-      ⍝   Writing data (append or replace):
-      ⍝       <newdata> IO <file> <component>
-      ⍝   Append unnamed data directly to a new component:
-      ⍝       <newcmpnum> ← <newdata> IO <file> 0
-      ⍝
-      ⍝ Originally written 27 November 2005 for APL+Win by Davin Church of Creative Software Design
-      ⍝ Converted to Dyalog APL 23 April 2021 by Davin Church of Creative Software Design
-      ⍝ Last modified 18 July 2021 by Davin Church of Creative Software Design
+∇ data←{newdata}IO item;cn;comp;file;read;sub;t;tn;untie;io;⎕TRAP;dpath;spath;hold;sig
+     ⍝ Read or write a named (or numbered) component of an APL component file.
+     ⍝ (File component #1 is reserved for holding the master file directory.)
+     ⍝
+     ⍝ Syntax:
+     ⍝   Reading data:
+     ⍝       <data> ← IO <file> <component>
+     ⍝   Writing data (append or replace):
+     ⍝       <newdata> IO <file> <component>
+     ⍝   Append unnamed data directly to a new component:
+     ⍝       <newcmpnum> ← <newdata> IO <file> 0
+     ⍝
+     ⍝ Originally written 27 November 2005 for APL+Win by Davin Church of Creative Software Design
+     ⍝ Converted to Dyalog APL 23 April 2021 by Davin Church of Creative Software Design
+     ⍝ Last modified 4 April 2022 by Davin Church of Creative Software Design
      
  io←(⊃1⌽⎕RSI).⎕IO ⋄ untie←0 ⋄ read←0=⊃⎕NC'newdata' ⍝ Initialize flags
- ⎕TRAP←,⊂0 'C' '⎕FUNTIE untie ⋄ (⊃⎕DM) ⎕SIGNAL ⎕EN' ⍝ Pass any errors upwards to caller
+ ⎕TRAP←,⊂0 'C' '→Crash' ⍝ Errors should exit via error-handling code
  'Argument Length Error'⎕SIGNAL 2/⍨(,2)≢⍴item
  (file comp)←item ⍝ We should always have these two arguments
      
@@ -362,96 +383,131 @@ TreeSize←100
      'Illegal file name or tie number'⎕SIGNAL 18
  :EndSelect
      
-      ⍝ *** Check the file's master directory
- :If (0=≢⍴comp)∧5 7∊⍨10|⎕DR comp ⋄ :AndIf comp=⌊|comp ⋄ comp←⌊comp ⋄ :EndIf ⍝ Normalize a raw component #
- :If (0=≢⍴comp)∧1 3∊⍨10|⎕DR comp ⍝ If they gave us a raw component number
- :AndIf comp>0 ⍝ (And not asking for an append)
- :AndIf comp<2⊃⎕FSIZE tn ⍝ And it's an existing component #
-          ⍝ Then we don't need to spend time & space reading out and checking the main directory
- :Else ⍝ Pre-check the master directory to make sure it at least appears to be in our file format
-     :If 1≠1⊃⎕FSIZE tn ⋄ ⎕FUNTIE untie ⋄ 'Missing master file directory'⎕SIGNAL 23 ⋄ :EndIf
-     :If 1=2⊃⎕FSIZE tn
-         ⍬(0⍴⊂⍬)⎕FAPPEND tn ⍝ Automatically initialize an empty file
-     :ElseIf (⊂t←⎕FREAD tn,1)∊⍬''
-         ⍬(0⍴⊂⍬)⎕FREPLACE tn,1 ⍝ Correct empty user-created directory
-     :ElseIf (,2)≢⍴t ⍝ Does it look about right?
-     :OrIf ~(∧/1=(≢⍴)¨t)∧(1≤|≡2⊃t)∧(1=|≡1⊃t)∧1 3∊⍨10|⎕DR 1⊃t
-         ⎕FUNTIE untie ⋄ 'Invalid master file directory'⎕SIGNAL 23
+ hold←⌽2 2⊤⌊|⊃∊AutoHold ⍝ Are we providing automatic ⎕FHOLD/:Hold?
+ :Hold hold[2]/⊂'FilePlus:',⍕tn ⍝ Conditionally :Hold across application threads
+     
+          ⍝ *** Check the file's master directory
+     :If (0=≢⍴comp)∧5 7∊⍨10|⎕DR comp ⋄ :AndIf comp=⌊|comp ⋄ comp←⌊comp ⋄ :EndIf ⍝ Normalize a raw component #
+     :If (0=≢⍴comp)∧1 3∊⍨10|⎕DR comp ⍝ If they gave us a raw component number
+     :AndIf comp>0 ⍝ (And not asking for an append)
+     :AndIf comp<2⊃⎕FSIZE tn ⍝ And it's an existing component #
+              ⍝ Then we don't need to spend time & space reading out and checking the main directory
+         hold[1]←0 ⍝ And in that case, we don't need to ⎕FHOLD the file on this call either
+     :Else ⍝ Pre-check the master directory to make sure it at least appears to be in our file format
+         :If hold[1] ⋄ ⎕FHOLD tn ⋄ :EndIf ⍝ ⎕FHOLD destroys previous ⎕FHOLDs
+         :If 1≠1⊃⎕FSIZE tn ⋄ :GoTo Signal,sig←23 'Missing master file directory' ⋄ :EndIf
+         :If 1=2⊃⎕FSIZE tn
+             ⍬(0⍴⊂⍬)⎕FAPPEND tn ⍝ Automatically initialize an empty file
+         :ElseIf (⊂t←⎕FREAD tn,1)∊⍬''
+             ⍬(0⍴⊂⍬)⎕FREPLACE tn,1 ⍝ Correct empty user-created directory
+         :ElseIf (,2)≢⍴t ⍝ Does it look about right?
+         :OrIf ~(∧/1=(≢⍴)¨t)∧(1≤|≡2⊃t)∧(1=|≡1⊃t)∧1 3∊⍨10|⎕DR 1⊃t
+             :GoTo Signal,sig←23 'Invalid master file directory'
+         :EndIf
      :EndIf
- :EndIf
      
-      ⍝ *** Component ID processing
- :If (0=≢⍴comp)∧1 3∊⍨10|⎕DR comp ⍝ They gave us a raw component number (for use like a normal file)
+          ⍝ *** Component ID processing
+     :If (0=≢⍴comp)∧1 3∊⍨10|⎕DR comp ⍝ They gave us a raw component number (for use like a normal file)
      
-         ⍝ *** Raw component # processing
-     :If read            ⍝ --- Read component (by raw number)
-         :If comp>0
-             data←⎕FREAD tn,comp
+              ⍝ *** Raw component # processing
+         :If read            ⍝ --- Read component (by raw number)
+             :If comp>0
+                 data←⎕FREAD tn,comp
+             :Else
+                 :GoTo Signal,sig←20 'Invalid raw component number'
+             :EndIf
+         :ElseIf comp>0      ⍝ --- Write (replace) component (by raw number)
+             :If comp≥2⊃⎕FSIZE tn ⍝ If the component # doesn't exist yet
+                 tn _fillto comp ⍝ Make sure that component # is the next one to be appended
+                 comp←newdata ⎕FAPPEND tn ⍝ Store it new
+             :Else
+                 newdata ⎕FREPLACE tn,comp ⍝ Store it in-place
+             :EndIf
+         :ElseIf comp=0      ⍝ --- Append (numbered) component - return new number
+             data←tn _append newdata ⍝ A logical append (reusing space if available)
          :Else
-             ⎕FUNTIE untie ⋄ 'Invalid raw component number'⎕SIGNAL 20
+             :GoTo Signal,sig←20 'Invalid raw component number'
          :EndIf
-     :ElseIf comp>0      ⍝ --- Write (replace) component (by raw number)
-         :If comp≥2⊃⎕FSIZE tn ⍝ If the component # doesn't exist yet
-             tn _fillto comp ⍝ Make sure that component # is the next one to be appended
-             comp←newdata ⎕FAPPEND tn ⍝ Store it new
-         :Else
-             newdata ⎕FREPLACE tn,comp ⍝ Store it in-place
+     
+     :Else ⍝ They gave us a component name (almost any structure permitted)
+     
+              ⍝ *** Named component analysis
+              ⍝ Simple scalars (of all non-integer types) are reserved for internal use
+         :If 0=≡comp ⋄ comp←,comp ⋄ :EndIf ⍝ Force scalars to 1⍴ vectors
+     
+         sub←io _subscript comp ⋄ comp←⊃sub ⋄ sub↓⍨←1 ⍝ Allow subscript specifications after names
+         :If 0∊⍴comp ⍝ Empty arrays of any type are prohibited
+             :GoTo Signal,sig←2 'Component name missing'
          :EndIf
-     :ElseIf comp=0      ⍝ --- Append (numbered) component - return new number
-         data←tn _append newdata ⍝ A logical append (reusing space if available)
-     :Else
-         ⎕FUNTIE untie ⋄ 'Invalid raw component number'⎕SIGNAL 20
-     :EndIf
-     
- :Else ⍝ They gave us a component name (almost any structure permitted)
-     
-          ⍝ *** Named component analysis
-          ⍝ Simple scalars (of all non-integer types) are reserved for internal use
-     :If 0=≡comp ⋄ comp←,comp ⋄ :EndIf ⍝ Force scalars to 1⍴ vectors
-     
-     sub←io _subscript comp ⋄ comp←⊃sub ⋄ sub↓⍨←1 ⍝ Allow subscript specifications after names
-     :If 0∊⍴comp ⍝ Empty arrays of any type are prohibited
-         ⎕FUNTIE untie ⋄ 'Component name missing'⎕SIGNAL 2
-     :EndIf
-     :If 0∊≢¨sub
-         ⎕FUNTIE untie ⋄ 'Component subscript missing or incomplete'⎕SIGNAL 2
-     :EndIf
-     
-          ⍝ *** Locate/create component name (and any subscripts) in directory/subdirectory
-     :If 0≠cn←⊃dpath←(tn _find(¯1*read))comp ⍝ Is this component name found in the master directory?
-         :If ×≢sub ⍝ If we've got subscripts, then we'll have a subdirectory to follow
-             cn←⊃spath←(tn _find(cn×¯1*read))sub ⍝ Look up subscript in B-tree subdirectory
+         :If 0∊≢¨sub
+             :GoTo Signal,sig←2 'Component subscript missing or incomplete'
          :EndIf
-     :EndIf
      
-          ⍝ *** Named component processing
-     :If read            ⍝ === Read component (by name)
-         :If cn>0
-             data←⎕FREAD tn,cn ⍝ Just read the data component and we're done
-         :Else
-             ⎕FUNTIE untie ⋄ 'Component Value Error'⎕SIGNAL 20
+              ⍝ *** Locate/create component name (and any subscripts) in directory/subdirectory
+         :If 0≠cn←⊃dpath←(tn _find(¯1*read))comp ⍝ Is this component name found in the master directory?
+             :If ×≢sub ⍝ If we've got subscripts, then we'll have a subdirectory to follow
+                 cn←⊃spath←(tn _find(cn×¯1*read))sub ⍝ Look up subscript in B-tree subdirectory
+             :EndIf
          :EndIf
-     :Else               ⍝ === Write [new] component (by name)
-         :If cn>0 ⍝ Replace existing component
-             newdata ⎕FREPLACE tn,cn ⍝ Update the data component
-         :Else ⍝ Append a new component
-             :If ×≢sub ⍝ Is this for a subdirectory?
-                 :If 0=⊃dpath ⍝ We don't even have a subdirectory yet (not found in master directory)
-                     cn←tn _append ⍬(0⍴⊂⍬) ⍝ Create a new (empty) subdirectory component
+     
+              ⍝ *** Named component processing
+         :If read            ⍝ --- Read component (by name)
+             :If cn>0
+                 data←⎕FREAD tn,cn ⍝ Just read the data component and we're done
+             :Else
+                 :GoTo Signal,sig←20 'Component Value Error'
+             :EndIf
+         :Else               ⍝ --- Write [new] component (by name)
+             :If cn>0 ⍝ Replace existing component
+                 newdata ⎕FREPLACE tn,cn ⍝ Update the data component
+             :Else ⍝ Append a new component
+                 :If ×≢sub ⍝ Is this for a subdirectory?
+                     :If 0=⊃dpath ⍝ We don't even have a subdirectory yet (not found in master directory)
+                         cn←tn _append ⍬(0⍴⊂⍬) ⍝ Create a new (empty) subdirectory component
+                         cn(tn _insert dpath)comp ⍝ And add it to the master directory
+                         spath←(tn _find cn)sub ⍝ Get a not-found pointer into the new (empty) subdirectory
+                     :EndIf
+                     cn←tn _append newdata ⍝ Create a new data component
+                     cn(tn _insert spath)sub ⍝ And add it to the (possibly new) subdirectory
+                 :Else ⍝ Create a new scalar component
+                     cn←tn _append newdata ⍝ Create a new data component
                      cn(tn _insert dpath)comp ⍝ And add it to the master directory
-                     spath←(tn _find cn)sub ⍝ Get a not-found pointer into the new (empty) subdirectory
                  :EndIf
-                 cn←tn _append newdata ⍝ Create a new data component
-                 cn(tn _insert spath)sub ⍝ And add it to the new subdirectory
-             :Else ⍝ Create a new scalar component
-                 cn←tn _append newdata ⍝ Create a new data component
-                 cn(tn _insert dpath)comp ⍝ And add it to the master directory
              :EndIf
          :EndIf
      :EndIf
- :EndIf
+ :EndHold
      
  ⎕FUNTIE untie ⍝ Untie any temporary file tie when we're done
+ :If hold[1] ⋄ ⎕FHOLD ⍬ ⋄ :EndIf ⍝ All ⎕FHOLDs may be released
+ :Return
+     
+Signal:⎕FUNTIE untie ⍝ Untie any temporary file tie when we exit with an error
+ :If hold[1] ⋄ ⎕FHOLD ⍬ ⋄ :EndIf ⍝ All ⎕FHOLDs may be released
+ ⎕SIGNAL/⌽sig ⍝ Produce a specific APL error (⎕EN,⎕DM)
+     
+Crash:⎕FUNTIE untie ⍝ Untie any temporary file tie when we get an error
+ :If hold[1] ⋄ ⎕FHOLD ⍬ ⋄ :EndIf ⍝ All ⎕FHOLDs may be released
+ (⊃⎕DM)⎕SIGNAL ⎕EN ⍝ Pass any errors upwards to caller
+∇
+
+∇ {was}←Sharing is
+     ⍝ Query or set the FilePlus auto-hold feature to manage shared data files
+     ⍝ Provide a ⍬ to query the current auto-hold setting.
+     ⍝ Provide an integer from 0 through 3 to change the current auto-hold setting.
+     ⍝   0=No holding
+     ⍝   1=Perform ⎕FHOLD
+     ⍝   2=Perform :Hold
+     ⍝   3=Perform both kinds of holding
+     ⍝ Returns the value of the previous setting.
+     ⍝
+     ⍝ Written 5 June 2022 by Davin Church of Creative Software Design
+     
+ was←AutoHold
+ :If 0≠≢is
+     'Invalid setting (use 0, 1, 2, or 3)'⎕SIGNAL 11/⍨~(⊂is)∊0 1 2 3
+     AutoHold←⌊⊃is
+ :EndIf
 ∇
 
 ∇ tienum←{exclusive}Tie file;⎕TRAP;t;UC;relative
@@ -478,9 +534,9 @@ TreeSize←100
      ⍝
      ⍝ Written 27 November 2005 by Davin Church of Creative Software Design
      ⍝ Converted to Dyalog APL 23 April 2021 by Davin Church of Creative Software Design
-     ⍝ Last modified 18 July 2021 by Davin Church of Creative Software Design
+     ⍝ Last modified 4 April 2022 by Davin Church of Creative Software Design
      
- ⎕TRAP←,⊂0 'C' '(⊃⎕DM) ⎕SIGNAL ⎕EN' ⍝ Pass any errors upwards to caller
+ ⎕TRAP←,⊂0 'C' '→Crash' ⍝ Errors should exit via error-handling code
  :If 1 3 5 7∊⍨10|⎕DR file
      :If ×≢t←|(,file∊⎕FNUMS,-⎕FNUMS)/,file ⋄ ⎕FUNTIE t ⋄ :EndIf ⍝ Just untie normally-tied file(s)
  :Else ⍝ We want to tie the file
@@ -517,6 +573,10 @@ TreeSize←100
          :EndIf
      :EndIf
  :EndIf
+     
+ :Return ⍝ All done
+     
+Crash:(⊃⎕DM)⎕SIGNAL ⎕EN ⍝ Pass any errors upwards to caller
 ∇
 
 ∇ trim←{rmv}∆dlt data;⎕IO;⎕ML;keep
@@ -566,7 +626,7 @@ TreeSize←100
 ⍝ {path} is defined as the result of _find, where path[1]≠0
 
  'Unable to delete missing component'⎕SIGNAL 11/⍨0=free←⊃path
- root at←⊃path←1↓path ⍝ Where will we start searching?
+ (root at)←⊃path←1↓path ⍝ Where will we start searching?
  bmax←4⌈⌊|⊃∊TreeSize ⋄ bmin←¯1+⌈bmax÷2 ⍝ Adjustable B-tree size
  :If =/≢¨(ptrs keys)←⎕FREAD tn,root ⍝ This is a leaf node - just remove this item by itself
      (ptrs keys)/⍨←⊂at≠⍳≢ptrs ⍝ Remove this item from the node & update
@@ -625,7 +685,7 @@ TreeSize←100
  (ptrs keys)←⎕FREAD tn,root←|root ⍝ Obtain the B-tree root node to search
 
  :If (~read)∧bmax≤≢keys ⍝ Pre-split this large (full) node before proceeding
-     at←⌈(1+≢keys)÷2 ⋄ free←⍬ ⍝ Determine split point (the key value to move up into parent)
+     at←⌈2÷⍨1+≢keys ⋄ free←⍬ ⍝ Determine split point (the key value to move up into parent)
      ⍝ It would be possible to split new keys unevenly but that has advantages only if the keys are
      ⍝ mostly created in order, and that isn't necessarily how it would usually be done.
      :If =/≢¨ptrs keys ⍝ This is a leaf node being split (to leave room for inserting)
@@ -846,7 +906,7 @@ TreeSize←100
              ⍝ Rotate successor key/pointer down from parent node
              ptrs,←pptrs[at+1] ⋄ keys,←pkeys[2÷⍨at+1]
              :If ~leaf ⍝ We're working with branch nodes - handle an extra subtree pointer
-                ⍝ Rotate first subtree pointer from beginning of right sibling to me
+                 ⍝ Rotate first subtree pointer from beginning of right sibling to me
                  ptrs,←1↑1⊃sibling ⋄ (1⊃sibling)↓⍨←1
              :EndIf
              ⍝ Rotate right sibling's first key/pointer up into parent node
@@ -859,7 +919,7 @@ TreeSize←100
              ⍝ Rotate predecessor key/pointer down from parent node
              ptrs,⍨←pptrs[at-1] ⋄ keys,⍨←pkeys[2÷⍨at-1]
              :If ~leaf ⍝ We're working with branch nodes - handle an extra subtree pointer
-                ⍝ Rotate last subtree pointer from end of left sibling to me
+                 ⍝ Rotate last subtree pointer from end of left sibling to me
                  ptrs,⍨←⊢/1⊃sibling ⋄ (1⊃sibling)↓⍨←¯1
              :EndIf
              ⍝ Rotate left sibling's last key/pointer up into parent node
@@ -900,10 +960,10 @@ TreeSize←100
      :EndIf
      pptrs pkeys ⎕FREPLACE tn,2⊃path ⍝ And the parent has changed as well
 
-    ⍝ Finally, check to see if the root has gone away and replace it with sole child if so
+     ⍝ Finally, check to see if the root has gone away and replace it with sole child if so
      :If (2≥≢path)∧(0=≢pkeys)∧1=≢pptrs ⍝ Have we collapsed the root to nothing at all?
      :AndIf pptrs≡1↑path ⍝ (And a safety check to make sure it's really us)
-        ⍝ Remove it from the tree by replacing it with my merged node (happens infrequently)
+         ⍝ Remove it from the tree by replacing it with my merged node (happens infrequently)
          free∪←1⊃path ⍝ Discard only child (that got moved to root)
          ((pptrs pkeys)←ptrs keys)⎕FREPLACE tn,2⊃path ⋄ (ptrs keys)←bmin⍴¨0 0
      :EndIf

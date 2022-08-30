@@ -1,0 +1,17 @@
+ {was}←Sharing is
+⍝ Query or set the FilePlus auto-hold feature to manage shared data files
+⍝ Provide a ⍬ to query the current auto-hold setting.
+⍝ Provide an integer from 0 through 3 to change the current auto-hold setting.
+⍝   0=No holding
+⍝   1=Perform ⎕FHOLD
+⍝   2=Perform :Hold
+⍝   3=Perform both kinds of holding
+⍝ Returns the value of the previous setting.
+⍝
+⍝ Written 5 June 2022 by Davin Church of Creative Software Design
+
+ was←AutoHold
+ :If 0≠≢is
+     'Invalid setting (use 0, 1, 2, or 3)'⎕SIGNAL 11/⍨~(⊂is)∊0 1 2 3
+     AutoHold←⌊⊃is
+ :EndIf
