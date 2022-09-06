@@ -17,7 +17,7 @@
 
 ⍝ Make sure it cleaned up properly
  '∊'(dir Pass 0)1 'Long[]' ⍝ Is it completely gone?
- '⍬'(dir Pass(1 23~⍨⍳¯1+2⊃⎕FSIZE 1))1 ⍝ Is the entire file now recovered?
+ '⍬'(dir Pass{2=≢⍵~⍨⍳¯1+2⊃⎕FSIZE 1})1 ⍝ Is the entire file now recovered (except control components)?
 
  ⍝ And verify that it's still structurally correct
  '⌹'(dir Pass ⍬)1

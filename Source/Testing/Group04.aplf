@@ -21,7 +21,7 @@
  :EndFor
 
  '∊'(dir Pass 0)1 'Long[]' ⍝ Is it completely gone?
- '⍬'(dir Pass{(≢⍵)∊565+⍳25})1 ⍝ Do we have a lot of recovered components?
+ '⍬'(dir Pass{(≢⍵)∊500+⍳99})1 ⍝ Do we have a lot of recovered components?
  unused←'⍬'dir 1
  '↓' (dir Fail 'Unable to delete unused component number') 1,unused[?≢unused] ⍝ Try to drop an already-dropped raw number
 
