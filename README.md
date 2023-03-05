@@ -18,7 +18,7 @@ The following functions are available for use:
 | `Sharing` | Adjust global setting for automatic file sharing features, if needed. |
 
 ## General Notes
-Component names can be almost any APL value except for empty arrays and simple scalars.  Simple character scalars are accepted but raveled before use.  Component names that are simple character vectors are further processed for more convenient use but other names are used exactly as given.  Therefore it is reasonable to use matrices, nested arrays, etc. of any reasonable size, shape, depth, or type as component names.  (Floating point values are discouraged within a component name due to representational rounding difficulties.)
+Component names can be almost any APL value except for empty arrays and simple scalars.  Non-integer simple scalars are accepted but raveled before use.  Component names that are simple character vectors are further processed for more convenient use but other names are used exactly as given.  Therefore it is reasonable to use matrices, nested arrays, etc. of any reasonable size, shape, depth, or type as component names.  (Floating point values are discouraged within a component name due to representational rounding difficulties.)
 
 In addition, component names that are simple character vectors have been extended to allow the use of “array components”.  This means that a single name may be followed by a subscript notation (in traditional APL form) to create a component that is an item of a vector (or other array of any rank).  These subscripts may be integers as usual for APL, but they need not begin at `⎕IO` nor do they need to be consecutive.  In addition, subscripts may themselves be names, and names and integers may be mixed within the same dimension.
 
