@@ -25,6 +25,9 @@
  '↓'(dir Pass_{1})1 'Names[]' ⍝ Delete a whole vector component
  '⍬'(dir Pass 4 6 7 8 9 11 12)1 ⍝ Free space list after array deletion
  '∊'(dir Pass 0)1 'Names[]' ⍝ Is it gone?
+ '↑'(dir Pass 1)1 'Mine' ⍝ Can we acquire control of a component?
+ '↑'(dir Pass 0)1 'Mine' ⍝ Can we re-acquire an existing component?
+ '↓'(dir Pass_{1})1 'Mine' ⍝ Can we release (dispose of) an acquired component?
 
  ⍝ And verify that it's still structurally correct
  '⌹'(dir Pass (,3))1
