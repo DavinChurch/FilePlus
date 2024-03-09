@@ -17,10 +17,21 @@
 
 ⍝ Make sure it cleaned up properly
  '∊'(dir Pass 0)1 'Long[]' ⍝ Is it completely gone?
- '⍬'(dir Pass{2=≢⍵~⍨⍳¯1+2⊃⎕FSIZE 1})1 ⍝ Is the entire file now recovered (except control components)?
+ '⍬'(dir Pass{7=≢⍵~⍨⍳¯1+2⊃⎕FSIZE 1})1 ⍝ Is the entire file now recovered (except master directory & 6⍴ free list)?
 
  ⍝ And verify that it's still structurally correct
  '⌹'(dir Pass ⍬)1
+
+ ⍝ Now let's re-allocate that entire array from freed components
+ :For i :In ⌽⍳testsize ⍝ Recreate the array in reverse sequential order (for testing consistency)
+     ('Long[]'i)(io Pass_{1})1('Long[',(⍕i),']')
+ :EndFor
+
+ ⍝ And verify that it's structurally correct
+ '⌹'(dir Pass ⍬)1
+
+⍝ And make sure that it reused all the freed components
+ '⍬'(dir Pass ⍬)1 ⍝ Is the free list now empty?
 
  #.FilePlus.TreeSize←100 ⍝ Put it back the way it's supposed to be
  ⎕FUNTIE 1 ⋄ 0(⎕NDELETE Pass 1)tf ⍝ If that's enough for now, let's shut down and get rid of the evidence

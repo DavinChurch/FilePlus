@@ -55,7 +55,14 @@
          'Damaged file!  Reserved component list is invalid'⎕SIGNAL 23/⍨~{((,1)≡⍴⍴⍵)∧1 3∊⍨10|⎕DR ⍵}x ⍝ Require integer vector
      :EndIf
      :If ×t←⊃(tn _find(-root))⎕UCS 127 ⍝ Have any component numbers been freed (available for re-use)?
-         used,←x←⎕FREAD tn,t
+         x←⎕FREAD tn,t
          'Damaged file!  Free component list is invalid'⎕SIGNAL 23/⍨~{((,1)≡⍴⍴⍵)∧1 3∊⍨10|⎕DR ⍵}x ⍝ Require integer vector
+         'Damaged file!  Free component list is invalid'⎕SIGNAL 23/⍨~∧/(|(x<0)/x)<2⊃⎕FSIZE tn ⍝ Require valid sub-list pointers
+         used,←|x
+         :If ∨/x<0
+             x←⎕FREAD¨tn,¨|(x<0)/x ⍝ Check any free-space sub-lists as well
+             {'Damaged file!  Free component sub-list is invalid'⎕SIGNAL 23/⍨~{((,1)≡⍴⍴⍵)∧1 3∊⍨10|⎕DR ⍵}⍵}¨x ⍝ Require integer vectors
+             used,←∊x
+         :EndIf
      :EndIf
  :EndIf

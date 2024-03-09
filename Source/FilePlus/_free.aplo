@@ -1,10 +1,24 @@
- (tn _free)components;at;cn
+ (tn _free)components;at;cn;fmax;neg;pos;new
 ⍝ Mark listed component numbers as unused and reusable
 
- :If 0=≢components←∪components ⋄ :Return ⋄ :EndIf ⍝ Nothing to be freed
+ :If 0=≢components←∪components ⋄ :Return ⋄ :EndIf ⍝ Nothing to be freed?
  :If 0≠⊃at←(tn _find 1)⎕UCS 127 ⍝ Do we already have a free-space component in the master directory?
-     (components∪⎕FREAD tn,⊃at)⎕FREPLACE tn,⊃at ⍝ Just in-place update the list we've already got
+     (components←(⎕FREAD tn,⊃at)∪components)⎕FREPLACE tn,cn←⊃at ⍝ Just in-place update the list we've already got
  :Else
-     cn←,tn _append,components ⍝ Create the new free-list component
+     cn←tn _append components←,components ⍝ Create the new free-space list component
      cn(tn _insert at)⎕UCS 127 ⍝ Add it to our master directory
  :EndIf
+
+ ⍝:Return
+
+ fmax←15 10 5×4⌈⌊|⊃∊TreeSize ⍝ Compute sizes for splitting apart the free-space list (max-limit, split-size, min-limit)
+ :While fmax[1]<≢components ⍝ Is the free-space list getting to be larger than we like?
+ :AndIf fmax[1]<+/components>0 ⍝ And is still larger if we ignore any negative sub-pointers (which we won't limit)?
+     ⍝ Then let's split out most of the free-space list into a separate component for efficiency
+     neg←(components<0)/components ⋄ pos←(components>0)/components ⍝ Separate into sub-pointers and actual free-component numbers
+     pos←pos[⍒pos] ⍝ But while we're here, let's leave the low-numbered components on the first-to-be-reused end of the list
+     new←⊢/pos ⋄ pos←¯1↓pos ⍝ We'll re-use the lowest numbered of them to hold a new sub-list
+     (fmax[2]↑pos)⎕FREPLACE tn,new ⍝ Write the new free-space sublist to our reserved component
+     neg,←-new ⋄ pos←fmax[2]↓pos ⍝ Adjust the main free-space list to allow for the new sub-list
+     (components←neg,pos)⎕FREPLACE tn,cn ⍝ Re-update the main free-space list in its current location
+ :EndWhile

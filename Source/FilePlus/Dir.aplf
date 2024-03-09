@@ -135,7 +135,7 @@
 
      :Case '?'               ⍝ === Directory list (of master directory)
          :If ×≢sub ⋄ :GoTo Signal,sig←2 'Invalid use of subscripting' ⋄ :EndIf ⍝ Should we allow rank-searching??
-         result←(2⊃1(tn _list 1)comp)~⎕ucs 0 127 ⍝ Return only master name list (optionally restricted by component-name content)
+         result←(2⊃1(tn _list 1)comp)~⎕UCS 0 127 ⍝ Return only master name list (optionally restricted by component-name content)
 
      :CaseList '∊⍳↑'         ⍝ === Check for existence; Locate cmp #; Take control of cmp
          :If 0∊⍴comp ⋄ :GoTo Signal,sig←2 'Component name missing' ⋄ :EndIf
@@ -227,7 +227,8 @@
              :AndIf comp∊⎕FREAD tn,t
                  :GoTo Signal,sig←19 'Unable to delete reserved component number'
              :ElseIf ×t←⊃(tn _find ¯1)⎕UCS 127 ⍝ Do we have any freed components?
-             :AndIf comp∊⎕FREAD tn,t
+             :AndIf ×≢t←⎕FREAD tn,t
+             :AndIf comp∊(|t),tn{0=≢⍵:⍬ ⋄ ∊⎕FREAD¨⍺⍺,¨⍵}|(t<0)/t
                  :GoTo Signal,sig←19 'Unable to delete unused component number'
              :ElseIf comp∊1⊃mlist←(tn _list 1)'' ⍝ Will be a slow check on big files with subscripts, but important for safety
                  :GoTo Signal,sig←19 'Unable to delete named component by number'
@@ -288,7 +289,7 @@
          :If 0=t←⊃(tn _find ¯1)⎕UCS 127 ⍝ Do we have any free-space components?
              result←⍬ ⍝ Nope
          :Else
-             result←{⍵[⍋⍵]}⎕FREAD tn,t ⍝ These are they (sorted)
+             result←{⍵[⍋⍵]}tn{t←⎕FREAD ⍺⍺,⍵ ⋄ ∧/t>0:t ⋄ ((t>0)/t),∊∇¨|(t<0)/t}t ⍝ These are they (unnested and sorted)
          :EndIf
 
      :Case '⌹'               ⍝ === Validate directory; return unindexed cmp #s
