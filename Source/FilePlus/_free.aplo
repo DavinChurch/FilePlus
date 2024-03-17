@@ -9,7 +9,7 @@
      cn(tn _insert at)⎕UCS 127 ⍝ Add it to our master directory
  :EndIf
 
- fmax←15 10 5×4⌈⌊|⊃∊TreeSize ⍝ Compute sizes for splitting apart the free-space list (max-limit, split-size, min-limit)
+ fmax←15 10×4⌈⌊|⊃∊TreeSize ⍝ Compute sizes for splitting apart the free-space list (max-limit, split-size)
  :While fmax[1]<≢components ⍝ Is the free-space list getting to be larger than we like?
  :AndIf fmax[1]<+/components>0 ⍝ And is still larger if we ignore any negative sub-pointers (which we won't limit)?
      ⍝ Then let's split out most of the free-space list into a separate component for efficiency

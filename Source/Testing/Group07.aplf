@@ -15,7 +15,7 @@
  ⍝ Now delete the entire array at once
  '↓'(dir Pass_{1})1 'Long[]'
 
-⍝ Make sure it cleaned up properly
+ ⍝ Make sure it cleaned up properly
  '∊'(dir Pass 0)1 'Long[]' ⍝ Is it completely gone?
  '⍬'(dir Pass{7=≢⍵~⍨⍳¯1+2⊃⎕FSIZE 1})1 ⍝ Is the entire file now recovered (except master directory & 6⍴ free list)?
 
@@ -30,8 +30,35 @@
  ⍝ And verify that it's structurally correct
  '⌹'(dir Pass ⍬)1
 
-⍝ And make sure that it reused all the freed components
+ ⍝ And make sure that it reused all the freed components
  '⍬'(dir Pass ⍬)1 ⍝ Is the free list now empty?
+
+ ⍝ Check file size
+ (⎕FSIZE Pass{100000<3⊃⍵})1 ⍝ Is it a sizable file (in bytes)?
+
+ ⍝ Now delete the entire array again
+ '↓'(dir Pass_{1})1 'Long[]'
+
+ ⍝ Make sure it cleaned up properly
+ '∊'(dir Pass 0)1 'Long[]' ⍝ Is it completely gone?
+ '⍬'(dir Pass{7=≢⍵~⍨⍳¯1+2⊃⎕FSIZE 1})1 ⍝ Is the entire file now recovered (except master directory & 6⍴ free list)?
+
+ ⍝ Check file size
+ (⎕FSIZE Pass{100000<3⊃⍵})1 ⍝ Is it still a sizable file (in bytes)?
+
+ ⍝ And let's Prune the file to get rid of all unused trailing components
+ '⊣'(dir Pass_{1})1
+ '⍬'(dir Pass ⍬)1 ⍝ Have we dropped off the entire free list?
+ (⎕FSIZE Pass{3=2⊃⍵})1 ⍝ And are we back down to a nearly-empty file?
+ (⎕FSIZE Pass{100000<3⊃⍵})1 ⍝ Is it still a sizable file (in bytes) even with few components?
+
+ ⍝ Let's try compacting it in-place
+ 0(⎕FRESIZE Pass 1)1
+ (⎕FSIZE Pass{2000>3⊃⍵})1 ⍝ Is it back to a tiny file (in bytes)?
+
+ ⍝ And verify that it's still structurally correct
+ '⌹'(dir Pass ⍬)1
+
 
  #.FilePlus.TreeSize←100 ⍝ Put it back the way it's supposed to be
  ⎕FUNTIE 1 ⋄ 0(⎕NDELETE Pass 1)tf ⍝ If that's enough for now, let's shut down and get rid of the evidence

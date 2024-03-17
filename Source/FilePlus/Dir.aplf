@@ -1,4 +1,4 @@
- result←function Dir file;io;untie;comp;tn;t;sub;sdir;emsg;dpath;spath;mlist;⎕TRAP;fixio;used;hold;sig;cn;free;h;l;freedir;tofree;touse
+ result←function Dir file;io;untie;comp;tn;t;sub;sdir;emsg;dpath;spath;mlist;⎕TRAP;fixio;used;hold;sig;cn;h;l;tofree;touse;at;allfree
 ⍝ Directory management for a FilePlus file.
 ⍝
 ⍝ Syntax:
@@ -38,7 +38,7 @@
 ⍝?              (Future thought: Use ↓↓ to also empty the component contents?)
 ⍝       '≠'     Return a list of all user-reserved component numbers.
 ⍝       '⍬'     Return a list of all free-space component numbers.
-⍝       '⊢'     Prune file by dropping trailing unused components.
+⍝       '⊣'     Prune file by dropping trailing unused components.
 ⍝       '⌹'     Validate file directory structure & return unindexed component #s.
 ⍝       (More mnemonic function codes may be invented in the future.)
 ⍝   [component] is a component name, used for some {functions}.
@@ -229,7 +229,7 @@
                  :GoTo Signal,sig←19 'Unable to delete reserved component number'
              :ElseIf ×t←⊃(tn _find ¯1)⎕UCS 127 ⍝ Do we have any freed components?
              :AndIf ×≢t←⎕FREAD tn,t
-             :AndIf comp∊(|t),tn{0=≢⍵:⍬ ⋄ ∊⎕FREAD¨⍺⍺,¨⍵}|(t<0)/t
+             :AndIf comp∊(|t),tn{0=≢⍵:⍬ ⋄ ∊⎕FREAD¨⍺⍺,¨⍵}|t/⍨t<0
                  :GoTo Signal,sig←19 'Unable to delete unused component number'
              :ElseIf comp∊1⊃mlist←(tn _list 1)'' ⍝ Will be a slow check on big files with subscripts, but important for safety
                  :GoTo Signal,sig←19 'Unable to delete named component by number'
@@ -290,45 +290,43 @@
          :If 0=t←⊃(tn _find ¯1)⎕UCS 127 ⍝ Do we have any free-space components?
              result←⍬ ⍝ Nope
          :Else
-             result←{⍵[⍋⍵]}tn{t←⎕FREAD ⍺⍺,⍵ ⋄ ∧/t>0:t ⋄ ((t>0)/t),∊∇¨|(t<0)/t}t ⍝ These are they (unnested and sorted)
+             result←{⍵[⍋⍵]}tn{t←⎕FREAD ⍺⍺,⍵ ⋄ ∧/t>0:t ⋄ (t/⍨t>0),⍨∊∇¨|t/⍨t<0}t ⍝ These are they (unnested and sorted)
          :EndIf
 
-     :Case '⊢'               ⍝ === Prune file by packing and dropping unused trailing components
+     :Case '⊣'               ⍝ === Prune file by packing and dropping unused trailing components
          :If (,0)≢⍴comp ⋄ :GoTo Signal,sig←2 'Component name not permitted' ⋄ :EndIf
          :Repeat ⍝ We may leave new free space after a cleanup pass so repeat until fully packed
-             :If 0=t←⊃dpath←(tn _find ¯1)⎕UCS 127 ⍝ Do we have a free-space list at all?
-                 :Return ⍝ Nope - nothing we can do here
+             :If 0=⊃dpath←(tn _find ¯1)⎕UCS 127 ⍝ Do we have a free-space list at all?
+                 :Return ⍝ There's nothing we can do here at all
              :EndIf
-             ⍝ Compress free-list into earliest component #s (as much as safely possible)
-             t←(-t),tn{t←⎕FREAD ⍺⍺,⍵ ⋄ ∧/t>0:t ⋄ t,∊∇¨|t/⍨t<0}t ⍝ First, obtain entire free-space list, plus main- & sub- pointers
-             freedir←|t/⍨t<0 ⋄ free←t/⍨t>0 ⋄ tofree←touse←⍬ ⍝ Separate pointers from data and track to-be-freed list
-             :If (h←⊃freedir)>l←⌊/free ⍝ Can we move the main free-list component to earlier in the file (requires master index change)
-                 (⎕FREAD tn,h)⎕FREPLACE tn,l ⋄ freedir[freedir⍳h]←l ⋄ free~←l ⋄ touse,←l ⋄ tofree,←h ⍝ Swap component #s
+             allfree←{⍵[⍒⍵]}|tn{t←⎕FREAD ⍺⍺,⍵ ⋄ ∧/t>0:t ⋄ t,⍨∊∇¨|t/⍨t<0}⊃dpath ⍝ Extract full free-list including sub-pointers (now considered free) & sort it
+             ⍬ ⎕FREPLACE tn,⊃dpath ⍝ Mark entire free list as used while we compact, to keep from corrupting file integrity if a crash occurs
+             ⍝ Compact all B-Trees into earliest component #s (as much as safely possible)
+             :For cn comp :InEach (1(⊂'')),¨{(⊂×1 _keyrank¨2⊃⍵)/¨⍵}0 0,¨1(tn _list 1)'[' ⍝ Loop through all B-Tree roots (including master root)
+                 tofree←(tn _compact cn)allfree
+                 :If cn∊⊃⊃tofree ⍝ Did we move the root of the tree? (root #1 can't ever move)
+                     ⍝ Update the master tree's root pointer to this component
+                     at←2⊃(tn _find ¯1)comp ⋄ sdir←⎕FREAD tn,1⊃at ⋄ ((1,2⊃at)⊃sdir)←1 2⊃tofree ⋄ sdir ⎕FREPLACE tn,1⊃at
+                 :EndIf
+                 allfree←{⍵[⍒⍵]}(allfree~2⊃¨tofree),1⊃¨tofree ⍝ Mark all movements in master list (but keep in memory)
+             :EndFor
+             ⍝ Move new in-memory free-list to the earliest available component #
+             :If (h←⊃dpath)>l←⌊/allfree
+                 (⎕FREAD tn,h)⎕FREPLACE tn,l ⋄ allfree←{⍵[⍒⍵]}l~⍨allfree,h ⋄ (1⊃dpath)←l ⍝ Swap component #s
                  mlist←⎕FREAD tn,2 1⊃dpath ⋄ t←(2 2⊃dpath)×1+≠/≢¨mlist ⋄ ((1,t)⊃mlist)←l ⋄ mlist ⎕FREPLACE tn,2 1⊃dpath ⍝ Update master directory pointer
              :EndIf
-             :While (h←⌈/1↓freedir)>l←⌊/free ⍝ Find free-list extension components that can be moved earlier in the file
-                 (⎕FREAD tn,h)⎕FREPLACE tn,l ⋄ freedir[freedir⍳h]←l ⋄ free~←l ⋄ touse,←l ⋄ tofree,←h ⍝ Swap component #s
-             :EndWhile
-             :For t :In 1↓freedir ⋄ (touse~⍨⎕FREAD tn,t)⎕FREPLACE tn,t ⋄ :EndFor ⍝ Remove newly-used component #s from sub-lists
-             free←tofree,touse~⍨⎕FREAD tn,⊃freedir ⋄ ((1↓-freedir),(free>0)/free)⎕FREPLACE tn,⊃freedir ⍝ Safely update master free list last
              ⍝ Now see what's left at the end that we can dispense with
-             free←tn{t←⎕FREAD ⍺⍺,⍵ ⋄ ∧/t>0:t ⋄ (t/⍨t>0),∊∇¨|t/⍨t<0}⊃freedir ⍝ Re-obtain entire actual free-space list (without pointers this time)
-             :If (⊃free←free[⍒free])<¯1+2⊃⎕FSIZE tn ⍝ If the last component is still in use, there's nothing more we can get rid of
-                 :Leave ⍝ Quit trying to trim file size
-             :EndIf
-             tofree←(1++/∧\1=2-/free)↑free ⋄ touse←⍬ ⍝ How many of them are reverse-consecutive?
-             ⍝ Go through all the list pointers (still valid) and clean these to-be-dropped pointers out of them
-             :For t :In freedir ⍝ Remove extra component #s from main- & sub- lists
-                 (h←tofree~⍨⎕FREAD tn,t)⎕FREPLACE tn,t ⍝ Some sub-lists won't be there at all any more
-                 :If (0=≢h)∧t≠⊃freedir ⋄ touse,←t ⋄ freedir~←t ⋄ :EndIf ⍝ If it's empty now, let's mark it gone as well
-             :EndFor
-             ((1↓-freedir),touse,⍨{⍵/⍨⍵>0}⎕FREAD tn,⊃freedir)⎕FREPLACE tn,⊃freedir
-             ⎕FDROP tn,-≢tofree ⍝ Finally, throw out the unused trailing components
-         :Until 0=≢tofree ⍝ (There will always be something we just got rid of if we get here, but just for safety)
-         ⍝ Let's replace all unused components with '' while we're here to reclaim most of the unused space
-         :If ×≢free←tn{t←⎕FREAD ⍺⍺,⍵ ⋄ ∧/t>0:t ⋄ (t/⍨t>0),∊∇¨|t/⍨t<0}⊃freedir ⍝ Obtain latest free-space list
-             (⊂'')⎕FREPLACE¨tn,¨free ⍝ Write '' to each one of those components to remove any left-over data
+             tofree←allfree↑⍨+/∧\1=2-/allfree,⍨2⊃⎕FSIZE tn ⍝ How many of them are reverse-consecutive from exactly the end of the file?
+             allfree←allfree↓⍨≢tofree ⍝ These won't be free any more; they'll be entirely gone
+             allfree ⎕FREPLACE tn,⊃dpath ⍝ Create a brand-new (un-split, for now) free-list
+             ⎕FDROP tn,-≢tofree ⍝ Finally, throw out any unused trailing components
+         :Until 0=≢tofree
+         ⍝ Let's replace all unused components with '' while we're here to release most of the unused space and neaten up the free list
+         :If ×≢allfree
+             (⊂'')⎕FREPLACE¨tn,¨allfree ⍝ Write '' to each one of those components to remove any left-over data
+             tn _free⊃allfree ⍝ Have _free split up the list into more-manageable pieces if it ended up very large
          :EndIf
+
 
      :Case '⌹'               ⍝ === Validate directory; return unindexed cmp #s
          :If (,0)≢⍴comp ⋄ :GoTo Signal,sig←2 'Component name not permitted' ⋄ :EndIf

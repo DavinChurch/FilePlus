@@ -1,0 +1,16 @@
+ moved←(tn _compact root)wasfree;sdir;new;tofree;schg;cn
+⍝ Move all B-Tree subdirectory components, starting at "root", to the lowest free component available
+⍝ Right argument is the full starting free-component list available for use
+⍝ Result is a vector of from-to component number pairs that were successfully moved and need to be freed/adjusted
+
+ sdir←⎕FREAD tn,root ⋄ moved←0⍴⊂0 0 ⋄ schg←0 ⍝ See what the pseudo-root looks like; we may be moving or changing it
+ :If root>new←⌊/wasfree ⋄ sdir ⎕FREPLACE tn,new ⋄ wasfree~←new ⋄ moved,←⊂root new ⋄ root←new ⋄ :EndIf ⍝ First, see if pseudo-root itself can be moved
+ :If =/≢¨sdir ⋄ :Return ⋄ :EndIf ⍝ If this is a leaf node then we're done
+ :For cn :In (×2|⍳≢⊃sdir)/⊃sdir
+     moved,←tofree←(tn _compact cn)wasfree ⍝ Recurse and accumulate all the movements performed
+     wasfree~←2⊃¨tofree ⍝ Make sure we don't use these again in the next loop
+     :If cn∊⊃⊃tofree ⍝ Did we move the parent node of the subtree (will always be the first movement, if any)?
+         ((1,cn⍳⍨⊃sdir)⊃sdir)←1 2⊃tofree ⋄ schg←1 ⍝ Make a permanent note of where the new subtree has already been moved to
+     :EndIf
+ :EndFor
+ :If schg ⋄ sdir ⎕FREPLACE tn,root ⋄ :EndIf ⍝ Put back any pseudo-root changes (once per parent node)
