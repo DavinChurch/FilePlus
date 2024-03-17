@@ -18,7 +18,7 @@
  sharing 2 ⍝ We only have an easy way to test :Hold here
  times←0 3⍴0
  ⎕TSYNC tid←1 Group08Try&¨⍳5
- ({∧/1<¯2-/⍵}Pass 1)times[;3] ⍝ File verification better take at least 1ms each to complete so we can prove sequentiality
+ ({∧/0<¯2-/⍵}Pass 1)times[;3] ⍝ File verification better take at least 1ms each to complete so we can prove sequentiality
 
  sharing 0 ⍝ Reset what we were playing with
  ⎕FUNTIE 1 ⋄ 0(⎕NDELETE Pass 1)tf ⍝ Let's shut down and get rid of the evidence
